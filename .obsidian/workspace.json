@@ -1,0 +1,202 @@
+{
+  "main": {
+    "id": "f5a49e83e2954d59",
+    "type": "split",
+    "children": [
+      {
+        "id": "30d83b8afc213e80",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6c74747448d3fadd",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "07eccaa57cc8efc6",
+    "type": "split",
+    "children": [
+      {
+        "id": "2ab90a7327d3531e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b49cd77d85f256b9",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "deb893f8d1adc719",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "b22cdea7f6209725",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "672e4c389ad9f63a",
+    "type": "split",
+    "children": [
+      {
+        "id": "f309bac2aac4963d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d9aea6e12f0852c8",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "d1df50331939b7a8",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "2924504d970f37df",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "a17e7094ec6e8d5f",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "05af54d449f17623",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-excalidraw-plugin:New drawing": false
+    }
+  },
+  "active": "6c74747448d3fadd",
+  "lastOpenFiles": [
+    "papers/bitcoin-architecture.excalidraw",
+    "2026-02-08.md",
+    "Untitled.canvas",
+    "Excalidraw/Drawing 2026-02-08 17.24.48.excalidraw.md",
+    "Excalidraw/Scripts/Downloaded/Split Ellipse.md",
+    "Excalidraw/Scripts/Downloaded/Split Ellipse.svg",
+    "Excalidraw/Scripts/Downloaded",
+    "Excalidraw/Scripts",
+    "Excalidraw",
+    "papers/1.md.md",
+    "papers/notes.md",
+    "doc/KEY_INSIGHTS.md",
+    "doc/ARCHITECTURE_FINAL.md",
+    "doc/IMPLEMENTATION_PLAN.md",
+    "1.md",
+    "doc/RESEARCH_PAPERS.md",
+    "doc/QUICK_START.md",
+    "doc/PROJECT_OVERVIEW.md",
+    "doc/SYSTEM_DESIGN.md"
+  ]
+}

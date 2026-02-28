@@ -1,0 +1,3 @@
+[       0ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:8080/metanet/8584034b97fb3f8f124e9914efed27172d3a3b1385ea5dcfe6901c9722a809c8:0
+[  486038ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8080/spv/8584034b97fb3f8f124e9914efed27172d3a3b1385ea5dcfe6901c9722a809c8:0
+[  538419ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8080/spv/8584034b97fb3f8f124e9914efed27172d3a3b1385ea5dcfe6901c9722a809c8:0
