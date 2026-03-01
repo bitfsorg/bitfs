@@ -169,7 +169,7 @@ func TestBSVAliasEndpoint_TLSScheme(t *testing.T) {
 
 	pki, ok := caps["pki"].(string)
 	require.True(t, ok)
-	assert.True(t, strings.HasPrefix(pki, "https://localhost:8080/"),
+	assert.True(t, strings.HasPrefix(pki, "https://127.0.0.1:8080/"),
 		"pki URL should use https scheme with configured addr, got: %s", pki)
 }
 

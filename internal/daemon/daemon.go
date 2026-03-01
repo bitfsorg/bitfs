@@ -170,7 +170,7 @@ func (s *Session) IsExpired() bool {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		ListenAddr: ":8080",
+		ListenAddr: "127.0.0.1:8080",
 		TLS: TLSConfig{
 			Enabled: false,
 		},
@@ -186,7 +186,7 @@ func DefaultConfig() *Config {
 				Burst: 20,
 			},
 			CORS: CORSConfig{
-				Origins: []string{"*"},
+				Origins: []string{},
 				Methods: []string{"GET", "POST", "OPTIONS"},
 			},
 			MaxRequestSize: "10MB",

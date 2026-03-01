@@ -59,7 +59,7 @@ func TestHandleBSVAlias_IgnoresMaliciousHost(t *testing.T) {
 	// Must NOT contain the malicious host header value.
 	assert.NotContains(t, pki, "evil.example.com")
 	// Must use the configured address.
-	assert.Contains(t, pki, "localhost:8080")
+	assert.Contains(t, pki, "127.0.0.1:8080")
 }
 
 func TestHandleBSVAlias_CustomListenAddr(t *testing.T) {

@@ -88,8 +88,9 @@ func (d *Daemon) withAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := d.config.Security.AdminToken
 		if token == "" {
-			// No token configured: allow access (backward compatible).
-			next(w, r)
+			// No token configured: reject admin access by default.
+			writeJSONError(w, http.StatusForbidden, "NO_ADMIN_TOKEN",
+				"Admin access disabled: set admin_token in config or --admin-token flag")
 			return
 		}
 		auth := r.Header.Get("Authorization")
@@ -105,7 +106,7 @@ func (d *Daemon) withAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 func (d *Daemon) setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	origins := d.config.Security.CORS.Origins
 	if len(origins) == 0 {
-		origins = []string{"*"}
+		return // No CORS origins configured; skip CORS headers.
 	}
 
 	origin := r.Header.Get("Origin")
