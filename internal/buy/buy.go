@@ -175,7 +175,7 @@ func resolveUTXOs(params *BuyParams, price uint64) ([]*x402.HTLCUTXO, error) {
 		for _, u := range params.Config.ManualUTXOs {
 			total += u.Amount
 		}
-		fee := EstimateFee(len(params.Config.ManualUTXOs), 2, defaultFeeRate)
+		fee := EstimateHTLCFee(len(params.Config.ManualUTXOs), defaultFeeRate)
 		if total < price+fee {
 			return nil, fmt.Errorf("%w: manual UTXOs have %d sat, need %d sat (price=%d + fee~%d)",
 				ErrInsufficientBalance, total, price+fee, price, fee)

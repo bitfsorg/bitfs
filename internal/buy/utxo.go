@@ -23,6 +23,20 @@ func EstimateFee(nInputs, nOutputs int, feeRate uint64) uint64 {
 	return size * feeRate
 }
 
+// htlcScriptSizeEstimate is a conservative estimate of HTLC locking script size.
+// Covers both with-InvoiceID (200 bytes) and without (180 bytes) variants.
+const htlcScriptSizeEstimate = 200
+
+// EstimateHTLCFee estimates the fee for an HTLC funding transaction.
+// Layout: nInputs x P2PKH inputs + 1 HTLC output + 1 P2PKH change output.
+func EstimateHTLCFee(nInputs int, feeRate uint64) uint64 {
+	inputSize := uint64(nInputs * 148)
+	htlcOutput := uint64(8 + 1 + htlcScriptSizeEstimate) // satoshis + varint + script
+	changeOutput := uint64(34)                             // P2PKH
+	overhead := uint64(10)
+	return (inputSize + htlcOutput + changeOutput + overhead) * feeRate
+}
+
 // SelectUTXOs queries the blockchain service for UTXOs belonging to address
 // and selects the minimum set needed to cover amount + estimated fee using a
 // greedy largest-first algorithm. Returns HTLCUTXO slices ready for use in
@@ -62,8 +76,8 @@ func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address str
 		})
 		totalInput += u.Amount
 
-		// Estimate fee assuming 2 outputs (HTLC + change).
-		fee := EstimateFee(len(selected), 2, feeRate)
+		// Estimate fee for HTLC funding tx (1 HTLC output + 1 change output).
+		fee := EstimateHTLCFee(len(selected), feeRate)
 		if totalInput >= amount+fee {
 			return selected, nil
 		}
@@ -76,6 +90,6 @@ func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address str
 	}
 	return nil, fmt.Errorf("%w: need %d sat, have %d sat",
 		ErrInsufficientBalance,
-		amount+EstimateFee(len(netUTXOs), 2, feeRate),
+		amount+EstimateHTLCFee(len(netUTXOs), feeRate),
 		totalAvailable)
 }

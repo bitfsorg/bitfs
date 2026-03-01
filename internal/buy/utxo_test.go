@@ -29,8 +29,8 @@ func TestSelectUTXOs_SingleLargeUTXO(t *testing.T) {
 func TestSelectUTXOs_MultipleUTXOs(t *testing.T) {
 	utxos := []*network.UTXO{
 		{TxID: "aa" + strings.Repeat("00", 31), Vout: 0, Amount: 500, ScriptPubKey: "76a914" + strings.Repeat("00", 20) + "88ac"},
-		{TxID: "bb" + strings.Repeat("00", 31), Vout: 0, Amount: 800, ScriptPubKey: "76a914" + strings.Repeat("00", 20) + "88ac"},
-		{TxID: "cc" + strings.Repeat("00", 31), Vout: 0, Amount: 300, ScriptPubKey: "76a914" + strings.Repeat("00", 20) + "88ac"},
+		{TxID: "bb" + strings.Repeat("00", 31), Vout: 0, Amount: 1200, ScriptPubKey: "76a914" + strings.Repeat("00", 20) + "88ac"},
+		{TxID: "cc" + strings.Repeat("00", 31), Vout: 0, Amount: 800, ScriptPubKey: "76a914" + strings.Repeat("00", 20) + "88ac"},
 	}
 	mock := &network.MockBlockchainService{
 		ListUnspentFn: func(_ context.Context, _ string) ([]*network.UTXO, error) {
@@ -72,6 +72,15 @@ func TestEstimateFee(t *testing.T) {
 	fee := EstimateFee(1, 2, 1)
 	// 1 input * 148 + 2 outputs * 34 + 10 overhead = 226
 	assert.Equal(t, uint64(1*(148+2*34+10)), fee)
+}
+
+func TestEstimateHTLCFee_LargerThanP2PKH(t *testing.T) {
+	htlcFee := EstimateHTLCFee(1, 1)
+	p2pkhFee := EstimateFee(1, 2, 1)
+	assert.Greater(t, htlcFee, p2pkhFee, "HTLC fee should be larger due to bigger output script")
+	// HTLC output: 8 + 1 + 200 = 209 bytes vs P2PKH output: 34 bytes
+	// Difference should be ~175 bytes.
+	assert.InDelta(t, float64(htlcFee-p2pkhFee), 175, 10)
 }
 
 func TestSelectUTXOs_SkipsInvalidTxID(t *testing.T) {
