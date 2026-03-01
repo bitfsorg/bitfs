@@ -184,46 +184,12 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 	if buyerPubHex != "" && len(invoice.NodePNode) > 0 {
 		d.invoicesMu.Lock()
 		if len(invoice.Capsule) == 0 {
-			buyerPubBytes, err := hex.DecodeString(buyerPubHex)
-			if err == nil && len(buyerPubBytes) == 33 {
-				buyerPub, err := ec.PublicKeyFromBytes(buyerPubBytes)
-				if err == nil {
-					nodePriv, nodePub, err := d.wallet.DeriveNodeKeyPair(invoice.NodePNode)
-					if err == nil {
-						// Use invoice ID bytes as capsule nonce for per-purchase unlinkability.
-						// This ensures each capsule is unique even if the same buyer purchases
-						// the same file multiple times, preventing on-chain linkability.
-						invoiceIDBytes, _ := hex.DecodeString(invoice.ID)
-						capsule, err := method42.ComputeCapsuleWithNonce(nodePriv, nodePub, buyerPub, invoice.KeyHash, invoiceIDBytes)
-						if err == nil {
-							capsuleHash := method42.ComputeCapsuleHash(invoice.FileTxID, capsule)
-							// Build HTLC script for payment verification.
-							sellerPriv2, _, kpErr := d.wallet.GetSellerKeyPair()
-							if kpErr != nil {
-								log.Printf("[buy] WARN: cannot get seller key pair for HTLC: %v", kpErr)
-							} else {
-								sellerPKH := sellerPriv2.PubKey().Hash()
-								htlcScript, htlcErr := x402.BuildHTLC(&x402.HTLCParams{
-									BuyerPubKey:  buyerPubBytes,
-									SellerPubKey: sellerPriv2.PubKey().Compressed(),
-									SellerAddr:   sellerPKH,
-									CapsuleHash:  capsuleHash,
-									Amount:       invoice.TotalPrice,
-									Timeout:      x402.DefaultHTLCTimeout,
-									InvoiceID:    invoiceIDBytes,
-								})
-								if htlcErr != nil {
-									log.Printf("[buy] WARN: BuildHTLC failed: %v", htlcErr)
-								} else {
-									invoice.HTLCScript = htlcScript
-								}
-							}
-							invoice.Capsule = capsule
-							invoice.CapsuleNonce = invoiceIDBytes
-							invoice.CapsuleHash = hex.EncodeToString(capsuleHash)
-						}
-					}
-				}
+			if capsuleErr := d.computeInvoiceCapsule(invoice, buyerPubHex); capsuleErr != nil {
+				d.invoicesMu.Unlock()
+				log.Printf("[buy] ERROR: capsule computation failed for invoice %s: %v", invoice.ID, capsuleErr)
+				writeJSONError(w, http.StatusInternalServerError, "CAPSULE_FAILED",
+					"Cannot compute payment capsule")
+				return
 			}
 		}
 		d.invoicesMu.Unlock()
@@ -245,6 +211,57 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 		buyInfoResp["capsule_nonce"] = hex.EncodeToString(invoice.CapsuleNonce)
 	}
 	_ = json.NewEncoder(w).Encode(buyInfoResp)
+}
+
+// computeInvoiceCapsule computes the XOR-masked capsule and HTLC script for an invoice.
+// Must be called while holding d.invoicesMu write lock.
+func (d *Daemon) computeInvoiceCapsule(invoice *InvoiceRecord, buyerPubHex string) error {
+	buyerPubBytes, err := hex.DecodeString(buyerPubHex)
+	if err != nil || len(buyerPubBytes) != 33 {
+		return fmt.Errorf("invalid buyer pubkey hex")
+	}
+	buyerPub, err := ec.PublicKeyFromBytes(buyerPubBytes)
+	if err != nil {
+		return fmt.Errorf("invalid buyer public key: %w", err)
+	}
+	nodePriv, nodePub, err := d.wallet.DeriveNodeKeyPair(invoice.NodePNode)
+	if err != nil {
+		return fmt.Errorf("derive node key pair: %w", err)
+	}
+
+	// Use invoice ID bytes as capsule nonce for per-purchase unlinkability.
+	invoiceIDBytes, _ := hex.DecodeString(invoice.ID)
+	capsule, err := method42.ComputeCapsuleWithNonce(nodePriv, nodePub, buyerPub, invoice.KeyHash, invoiceIDBytes)
+	if err != nil {
+		return fmt.Errorf("compute capsule: %w", err)
+	}
+
+	capsuleHash := method42.ComputeCapsuleHash(invoice.FileTxID, capsule)
+
+	// Build HTLC script for payment verification.
+	sellerPriv, _, err := d.wallet.GetSellerKeyPair()
+	if err != nil {
+		return fmt.Errorf("get seller key pair: %w", err)
+	}
+	sellerPKH := sellerPriv.PubKey().Hash()
+	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+		BuyerPubKey:  buyerPubBytes,
+		SellerPubKey: sellerPriv.PubKey().Compressed(),
+		SellerAddr:   sellerPKH,
+		CapsuleHash:  capsuleHash,
+		Amount:       invoice.TotalPrice,
+		Timeout:      x402.DefaultHTLCTimeout,
+		InvoiceID:    invoiceIDBytes,
+	})
+	if err != nil {
+		return fmt.Errorf("build HTLC script: %w", err)
+	}
+
+	invoice.HTLCScript = htlcScript
+	invoice.Capsule = capsule
+	invoice.CapsuleNonce = invoiceIDBytes
+	invoice.CapsuleHash = hex.EncodeToString(capsuleHash)
+	return nil
 }
 
 // handleSubmitHTLC handles POST /_bitfs/buy/{txid} and accepts an HTLC
@@ -299,32 +316,19 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 		d.invoicesMu.Unlock()
 	}
 
-	if len(invoice.HTLCScript) > 0 {
-		// HTLC path: verify the funding tx has a matching HTLC output.
-		_, err := x402.VerifyHTLCFunding(htlcBody, invoice.HTLCScript, invoice.TotalPrice)
-		if err != nil {
-			rollbackPaid()
-			writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID",
-				fmt.Sprintf("HTLC verification failed: %v", err))
-			return
-		}
-	} else {
-		// Fallback: verify as P2PKH payment (backwards compatibility).
-		log.Printf("[buy] WARN: invoice %s: no HTLC script, falling back to P2PKH verification", invoice.ID)
-		proof := &x402.PaymentProof{RawTx: htlcBody}
-		inv := &x402.Invoice{
-			ID:          invoice.ID,
-			Price:       invoice.TotalPrice,
-			PricePerKB:  invoice.PricePerKB,
-			FileSize:    invoice.FileSize,
-			PaymentAddr: invoice.PaymentAddr,
-			Expiry:      invoice.Expiry.Unix(),
-		}
-		if _, err := x402.VerifyPayment(proof, inv); err != nil {
-			rollbackPaid()
-			writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID", "Payment verification failed")
-			return
-		}
+	if len(invoice.HTLCScript) == 0 {
+		rollbackPaid()
+		writeJSONError(w, http.StatusInternalServerError, "NO_HTLC_SCRIPT",
+			"Invoice missing HTLC script — cannot verify payment")
+		return
+	}
+
+	// HTLC path: verify the funding tx has a matching HTLC output.
+	if _, err := x402.VerifyHTLCFunding(htlcBody, invoice.HTLCScript, invoice.TotalPrice); err != nil {
+		rollbackPaid()
+		writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID",
+			fmt.Sprintf("HTLC verification failed: %v", err))
+		return
 	}
 
 	// Replay protection: ensure the same transaction is not used for multiple invoices.

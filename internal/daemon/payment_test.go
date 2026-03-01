@@ -33,6 +33,17 @@ func buildTestPaymentTx(t *testing.T, addr string, satoshis uint64) []byte {
 	return tx.Bytes()
 }
 
+// testP2PKHScript returns the P2PKH locking script for the given address.
+// Used to set HTLCScript on test invoices so VerifyHTLCFunding matches
+// the P2PKH outputs created by buildTestPaymentTx.
+func testP2PKHScript(t *testing.T, addr string) []byte {
+	t.Helper()
+	tx := transaction.NewTransaction()
+	err := tx.PayToAddress(addr, 1)
+	require.NoError(t, err)
+	return tx.Outputs[0].LockingScript.Bytes()
+}
+
 // --- servePaidContent Tests ---
 
 func TestServePaidContent_Returns402WithInvoice(t *testing.T) {
@@ -293,6 +304,7 @@ func TestHandleSubmitHTLC_Success(t *testing.T) {
 		PaymentAddr: testPaymentAddr,
 		CapsuleHash: strings.Repeat("dd", 32),
 		Capsule:     capsuleData,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 	}
@@ -433,6 +445,7 @@ func TestHandleSubmitHTLC_NoCapsule(t *testing.T) {
 		PricePerKB:  50,
 		FileSize:    1024,
 		PaymentAddr: testPaymentAddr,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 		Capsule:     nil, // no capsule computed
@@ -463,6 +476,7 @@ func TestHandleSubmitHTLC_InvalidTxBytes(t *testing.T) {
 		PricePerKB:  50,
 		FileSize:    1024,
 		PaymentAddr: testPaymentAddr,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 	}
@@ -497,6 +511,7 @@ func TestHandleSubmitHTLC_InsufficientPayment(t *testing.T) {
 		PricePerKB:  100,
 		FileSize:    4096,
 		PaymentAddr: testPaymentAddr,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 	}
@@ -532,6 +547,7 @@ func TestHandleSubmitHTLC_WrongAddress(t *testing.T) {
 		PricePerKB:  50,
 		FileSize:    1024,
 		PaymentAddr: testPaymentAddr,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 	}
@@ -617,13 +633,13 @@ func TestFullPurchaseFlow(t *testing.T) {
 	d.invoicesMu.RUnlock()
 	require.NotNil(t, storedInvoice)
 
-	// For the full flow test, override payment address with the well-known test address
-	// and clear the HTLC script so the P2PKH fallback verification path is used.
-	// (Testing HTLC script verification requires building a proper HTLC funding tx,
-	// which is covered in e2e tests.)
+	// For the full flow test, override payment address and HTLC script with the
+	// well-known test address P2PKH script so VerifyHTLCFunding matches the
+	// P2PKH transaction output. (Testing real HTLC script verification requires
+	// building a proper HTLC funding tx, which is covered in e2e tests.)
 	d.invoicesMu.Lock()
 	storedInvoice.PaymentAddr = testPaymentAddr
-	storedInvoice.HTLCScript = nil
+	storedInvoice.HTLCScript = testP2PKHScript(t, testPaymentAddr)
 	d.invoicesMu.Unlock()
 
 	// Step 3: Submit HTLC payment with a valid BSV transaction.
@@ -671,6 +687,7 @@ func TestHandleSubmitHTLC_ConcurrentDoublePayment(t *testing.T) {
 		PaymentAddr: testPaymentAddr,
 		CapsuleHash: strings.Repeat("dd", 32),
 		Capsule:     capsuleData,
+		HTLCScript:  testP2PKHScript(t, testPaymentAddr),
 		Expiry:      time.Now().Add(time.Hour),
 		Paid:        false,
 	}
