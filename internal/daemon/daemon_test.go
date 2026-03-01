@@ -158,6 +158,23 @@ func newTestDaemon(t *testing.T) (*Daemon, *mockWallet, *mockStore, *mockMetanet
 	return d, w, s, m
 }
 
+// testAdminToken is the bearer token used by admin-protected endpoint tests.
+const testAdminToken = "test-admin-secret"
+
+// newTestDaemonWithAdmin creates a daemon with admin token configured.
+func newTestDaemonWithAdmin(t *testing.T) (*Daemon, *mockWallet, *mockStore, *mockMetanet) {
+	t.Helper()
+	w := newMockWallet(t)
+	s := newMockStore()
+	m := newMockMetanet()
+	config := DefaultConfig()
+	config.Security.RateLimit.RPM = 0
+	config.Security.AdminToken = testAdminToken
+	d, err := New(config, w, s, m)
+	require.NoError(t, err)
+	return d, w, s, m
+}
+
 func newTestDaemonWithRateLimit(t *testing.T) *Daemon {
 	t.Helper()
 	w := newMockWallet(t)
@@ -227,7 +244,7 @@ func TestNew_NoRateLimit(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	c := DefaultConfig()
-	assert.Equal(t, ":8080", c.ListenAddr)
+	assert.Equal(t, "127.0.0.1:8080", c.ListenAddr)
 	assert.False(t, c.TLS.Enabled)
 	assert.Equal(t, 60, c.Security.RateLimit.RPM)
 	assert.Equal(t, 20, c.Security.RateLimit.Burst)
@@ -839,14 +856,34 @@ func TestRateLimiter_HTTPIntegration(t *testing.T) {
 // --- CORS Tests ---
 
 func TestCORS_DefaultHeaders(t *testing.T) {
+	// Default config has empty Origins — no CORS headers should be set (secure default).
 	d, _, _, _ := newTestDaemon(t)
 	req := httptest.NewRequest("GET", "/_bitfs/health", nil)
 	req.Header.Set("Origin", "http://example.com")
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
-	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	assert.NotEmpty(t, w.Header().Get("Access-Control-Allow-Methods"))
+	assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"),
+		"no CORS origin when Origins config is empty")
+}
+
+func TestCORS_WildcardOrigin(t *testing.T) {
+	// When Origins is ["*"], all origins are allowed.
+	w := newMockWallet(t)
+	s := newMockStore()
+	config := DefaultConfig()
+	config.Security.RateLimit.RPM = 0
+	config.Security.CORS.Origins = []string{"*"}
+	d, err := New(config, w, s, nil)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/_bitfs/health", nil)
+	req.Header.Set("Origin", "http://example.com")
+	rec := httptest.NewRecorder()
+	d.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.NotEmpty(t, rec.Header().Get("Access-Control-Allow-Methods"))
 }
 
 func TestCORS_Options(t *testing.T) {
@@ -1323,13 +1360,20 @@ func TestRateLimiter_BurstCapacity(t *testing.T) {
 }
 
 func TestCORS_AllowedHeaders(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	w := newMockWallet(t)
+	s := newMockStore()
+	config := DefaultConfig()
+	config.Security.RateLimit.RPM = 0
+	config.Security.CORS.Origins = []string{"*"}
+	d, err := New(config, w, s, nil)
+	require.NoError(t, err)
+
 	req := httptest.NewRequest("GET", "/_bitfs/health", nil)
 	req.Header.Set("Origin", "http://test.com")
-	w := httptest.NewRecorder()
-	d.Handler().ServeHTTP(w, req)
+	rec := httptest.NewRecorder()
+	d.Handler().ServeHTTP(rec, req)
 
-	allowHeaders := w.Header().Get("Access-Control-Allow-Headers")
+	allowHeaders := rec.Header().Get("Access-Control-Allow-Headers")
 	assert.Contains(t, allowHeaders, "Content-Type")
 	assert.Contains(t, allowHeaders, "Authorization")
 	assert.Contains(t, allowHeaders, "X-Session-Id")
@@ -1911,8 +1955,9 @@ func TestHandleVersions_PNodeMismatch(t *testing.T) {
 // --- handleSales Tests ---
 
 func TestHandleSales_Empty(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 	req := httptest.NewRequest("GET", "/_bitfs/sales", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -1926,7 +1971,7 @@ func TestHandleSales_Empty(t *testing.T) {
 }
 
 func TestHandleSales_FilterPaid(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	d.invoicesMu.Lock()
 	d.invoices["inv-paid"] = &InvoiceRecord{
@@ -1944,6 +1989,7 @@ func TestHandleSales_FilterPaid(t *testing.T) {
 	d.invoicesMu.Unlock()
 
 	req := httptest.NewRequest("GET", "/_bitfs/sales?status=paid", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -1958,7 +2004,7 @@ func TestHandleSales_FilterPaid(t *testing.T) {
 }
 
 func TestHandleSales_FilterPending(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	d.invoicesMu.Lock()
 	d.invoices["inv-paid"] = &InvoiceRecord{
@@ -1976,6 +2022,7 @@ func TestHandleSales_FilterPending(t *testing.T) {
 	d.invoicesMu.Unlock()
 
 	req := httptest.NewRequest("GET", "/_bitfs/sales?status=pending", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -1990,7 +2037,7 @@ func TestHandleSales_FilterPending(t *testing.T) {
 }
 
 func TestHandleSales_Limit(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	d.invoicesMu.Lock()
 	for i := 0; i < 3; i++ {
@@ -2005,6 +2052,7 @@ func TestHandleSales_Limit(t *testing.T) {
 	d.invoicesMu.Unlock()
 
 	req := httptest.NewRequest("GET", "/_bitfs/sales?limit=2", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 

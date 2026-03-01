@@ -14,9 +14,10 @@ import (
 )
 
 func TestDashboardStatus(t *testing.T) {
-	d, wallet, _, _ := newTestDaemon(t)
+	d, wallet, _, _ := newTestDaemonWithAdmin(t)
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/status", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -39,7 +40,7 @@ func TestDashboardStatus(t *testing.T) {
 }
 
 func TestDashboardStorage(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	// Create a temp directory with 2 files (5 + 6 = 11 bytes).
 	tmpDir := t.TempDir()
@@ -49,6 +50,7 @@ func TestDashboardStorage(t *testing.T) {
 	d.StorageDir = tmpDir
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/storage", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -64,9 +66,10 @@ func TestDashboardStorage(t *testing.T) {
 }
 
 func TestDashboardWallet(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/wallet", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -82,9 +85,10 @@ func TestDashboardWallet(t *testing.T) {
 }
 
 func TestDashboardNetwork(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/network", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -99,13 +103,14 @@ func TestDashboardNetwork(t *testing.T) {
 }
 
 func TestDashboardLogs(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	d.logBuf.Add("info", "msg1")
 	d.logBuf.Add("info", "msg2")
 	d.logBuf.Add("info", "msg3")
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/logs?limit=2", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
@@ -123,12 +128,13 @@ func TestDashboardLogs(t *testing.T) {
 }
 
 func TestDashboardLogs_FilterLevel(t *testing.T) {
-	d, _, _, _ := newTestDaemon(t)
+	d, _, _, _ := newTestDaemonWithAdmin(t)
 
 	d.logBuf.Add("info", "info message")
 	d.logBuf.Add("error", "error message")
 
 	req := httptest.NewRequest("GET", "/_bitfs/dashboard/logs?level=error", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
 	w := httptest.NewRecorder()
 	d.Handler().ServeHTTP(w, req)
 
