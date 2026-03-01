@@ -341,7 +341,8 @@ func (d *Daemon) Start() error {
 	d.cancelEviction = evictCancel
 	d.startInvoiceEviction(evictCtx)
 
-	// Start in background
+	// Start in background with error channel to propagate binding failures.
+	errCh := make(chan error, 1)
 	go func() {
 		var err error
 		if d.config.TLS.Enabled {
@@ -350,11 +351,20 @@ func (d *Daemon) Start() error {
 			err = d.server.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
+			errCh <- err
 			d.mu.Lock()
 			d.running = false
 			d.mu.Unlock()
 		}
 	}()
+
+	// Give server time to bind; surface early failures (e.g. port in use).
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("daemon: start failed: %w", err)
+	case <-time.After(100 * time.Millisecond):
+		// Server started successfully.
+	}
 
 	return nil
 }

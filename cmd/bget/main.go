@@ -38,7 +38,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(output, "output", "", "output filename")
 	buyFlag := fs.Bool("buy", false, "attempt to purchase paid content")
 	verify := fs.Bool("verify", false, "SPV-verify the Metanet tx before downloading")
-	walletKey := fs.String("wallet-key", "", "hex-encoded buyer private key (32 bytes)")
+	walletKey := fs.String("wallet-key", "", "buyer private key: hex, @filepath, or set BITFS_WALLET_KEY env")
 	utxoStr := fs.String("utxo", "", "buyer UTXO for purchase (txid:vout:amount)")
 	version := fs.Int("version", 0, "download a specific version (1=latest, 2=previous, ...)")
 	jsonOut := fs.Bool("json", false, "JSON output")

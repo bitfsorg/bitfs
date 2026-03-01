@@ -130,10 +130,11 @@ func promptYesNo(question string) bool {
 	return input == 'y' || input == 'Y'
 }
 
-// zeroString attempts to overwrite the string's bytes with zeros.
-// Go strings are immutable, so []byte(*s) creates a copy; this provides
-// defense in depth but cannot guarantee the original data is cleared.
-// For stronger guarantees, avoid string conversion and use []byte directly.
+// zeroString attempts to zero the string's byte content. Due to Go's
+// immutable string semantics, []byte(*s) creates a copy — the original
+// backing array cannot be zeroed. This provides defense-in-depth but
+// not a guarantee. For true secret protection, use []byte throughout
+// and avoid string conversions.
 func zeroString(s *string) {
 	b := []byte(*s)
 	for i := range b {

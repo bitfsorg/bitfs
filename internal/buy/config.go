@@ -33,6 +33,11 @@ type LoadConfigOpts struct {
 }
 
 // LoadConfig loads buyer configuration with priority: CLI flag > env var > file.
+//
+// The CLI flag and env var values support the @filepath syntax: if the value
+// starts with "@", the remainder is treated as a file path whose contents
+// (trimmed of whitespace) are used as the key hex. This avoids exposing the
+// private key in ps(1) output or shell history.
 func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 	cfg := &BuyerConfig{Network: "mainnet"}
 
@@ -54,12 +59,20 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 	// Layer 2: environment variable.
 	envKey := envGet(opts.Env, "BITFS_WALLET_KEY")
 	if envKey != "" {
-		keyHex = envKey
+		resolved, err := resolveWalletKey(envKey)
+		if err != nil {
+			return nil, fmt.Errorf("buyer: BITFS_WALLET_KEY: %w", err)
+		}
+		keyHex = resolved
 	}
 
 	// Layer 3: CLI flag (highest priority).
 	if opts.WalletKeyFlag != "" {
-		keyHex = opts.WalletKeyFlag
+		resolved, err := resolveWalletKey(opts.WalletKeyFlag)
+		if err != nil {
+			return nil, fmt.Errorf("buyer: --wallet-key: %w", err)
+		}
+		keyHex = resolved
 	}
 
 	if keyHex == "" {
@@ -172,6 +185,30 @@ func BuildP2PKHScript(pkh []byte) []byte {
 	s = append(s, pkh...)
 	s = append(s, 0x88, 0xac) // OP_EQUALVERIFY OP_CHECKSIG
 	return s
+}
+
+// resolveWalletKey resolves a wallet key value which may be a literal hex
+// string or a @filepath reference. If the value starts with "@", the
+// remainder is read as a file path and its contents (trimmed of leading/
+// trailing whitespace) are returned. This allows users to avoid exposing
+// private keys in process listings or shell history.
+func resolveWalletKey(value string) (string, error) {
+	if strings.HasPrefix(value, "@") {
+		path := strings.TrimPrefix(value, "@")
+		if path == "" {
+			return "", fmt.Errorf("empty file path after @")
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read wallet key file: %w", err)
+		}
+		trimmed := strings.TrimSpace(string(data))
+		if trimmed == "" {
+			return "", fmt.Errorf("wallet key file %q is empty", path)
+		}
+		return trimmed, nil
+	}
+	return value, nil
 }
 
 // envGet returns the value from the env map, falling back to os.Getenv if nil.

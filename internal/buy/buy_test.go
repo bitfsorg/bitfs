@@ -102,7 +102,7 @@ func TestBuy_GetBuyInfoError(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
 	})
 	assert.Error(t, err)
@@ -122,7 +122,7 @@ func TestBuy_InvalidCapsuleHashHex(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
 	})
 	assert.Error(t, err)
@@ -142,7 +142,7 @@ func TestBuy_InvalidPaymentAddr(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
 	})
 	assert.Error(t, err)
@@ -163,7 +163,7 @@ func TestBuy_InvalidSellerPubKeyHex(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
 	})
 	assert.Error(t, err)
@@ -185,7 +185,7 @@ func TestBuy_ResolveUTXOsError(t *testing.T) {
 	// No manual UTXOs and no blockchain → resolveUTXOs error
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
 	})
 	assert.Error(t, err)
@@ -218,7 +218,7 @@ func TestBuy_SubmitHTLCError(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{
 			PrivKey: pk,
 			ManualUTXOs: []*x402.HTLCUTXO{
@@ -235,7 +235,7 @@ func TestBuy_SuccessFlow(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
-	txID := "deadbeef"
+	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
 	capsuleHex := strings.Repeat("cc", 16)
 	nonceHex := strings.Repeat("dd", 16)
 
@@ -278,7 +278,7 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
-	txID := "deadbeef"
+	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
 	capsuleHex := strings.Repeat("cc", 16)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +334,7 @@ func TestBuy_InvalidCapsuleHexInResponse(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{
 			PrivKey: pk,
 			ManualUTXOs: []*x402.HTLCUTXO{
@@ -351,7 +351,7 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
-	txID := "deadbeef"
+	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
 	capsuleHex := strings.Repeat("cc", 16)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

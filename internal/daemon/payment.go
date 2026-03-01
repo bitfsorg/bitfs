@@ -87,7 +87,11 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 	}
 
 	// Create invoice without capsule hash (deferred until buyer identifies themselves).
-	inv := x402.NewInvoice(node.PricePerKB, node.FileSize, paymentAddr, nil, ttlSeconds)
+	inv, err := x402.NewInvoice(node.PricePerKB, node.FileSize, paymentAddr, nil, ttlSeconds)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "INVOICE_CREATE_FAILED", "Failed to create invoice")
+		return
+	}
 
 	// Convert x402.Invoice to daemon's InvoiceRecord for internal state management.
 	sellerPubKeyHex := hex.EncodeToString(sellerPriv.PubKey().Compressed())
@@ -230,7 +234,10 @@ func (d *Daemon) computeInvoiceCapsule(invoice *InvoiceRecord, buyerPubHex strin
 	}
 
 	// Use invoice ID bytes as capsule nonce for per-purchase unlinkability.
-	invoiceIDBytes, _ := hex.DecodeString(invoice.ID)
+	invoiceIDBytes, err := hex.DecodeString(invoice.ID)
+	if err != nil {
+		return fmt.Errorf("decode invoice ID hex: %w", err)
+	}
 	capsule, err := method42.ComputeCapsuleWithNonce(nodePriv, nodePub, buyerPub, invoice.KeyHash, invoiceIDBytes)
 	if err != nil {
 		return fmt.Errorf("compute capsule: %w", err)
@@ -374,13 +381,13 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// After broadcast succeeds, payment is final regardless of HTTP response delivery.
+	// Do NOT rollback invoice.Paid after this point — the tx is on-chain.
+
 	// Return the capsule (ECDH shared secret).
 	if len(invoice.Capsule) == 0 {
-		// Rollback: undo usedTxIDs entry and paid flag.
-		d.usedTxIDsMu.Lock()
-		delete(d.usedTxIDs, submittedTxID)
-		d.usedTxIDsMu.Unlock()
-		rollbackPaid()
+		// Payment is on-chain but capsule was never computed (server-side bug).
+		// Do NOT rollback paid or usedTxIDs; the payment already happened.
 		writeJSONError(w, http.StatusInternalServerError, "NO_CAPSULE", "No capsule computed for this invoice")
 		return
 	}
@@ -527,6 +534,8 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// After broadcast succeeds, payment is final regardless of HTTP response delivery.
+	// Do NOT rollback invoice.Paid after this point.
 	_ = d.persistInvoice(invoice)
 
 	w.Header().Set("Content-Type", "application/json")

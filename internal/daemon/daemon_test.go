@@ -1552,6 +1552,10 @@ func TestServeJSON_ExposesKeyHashForFree(t *testing.T) {
 func TestCapsuleOverwrite_SecondBuyerCannotOverwrite(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
 	d.config.X402.Enabled = true
+	fileTxID := make([]byte, 32)
+	for i := range fileTxID {
+		fileTxID[i] = byte(i + 0xB0)
+	}
 	meta.nodes["/paid-file"] = &NodeInfo{
 		Type:       "file",
 		FileSize:   2048,
@@ -1559,6 +1563,7 @@ func TestCapsuleOverwrite_SecondBuyerCannotOverwrite(t *testing.T) {
 		PricePerKB: 100,
 		PNode:      make([]byte, 33),
 		KeyHash:    make([]byte, 32),
+		FileTxID:   fileTxID,
 	}
 
 	// Trigger invoice creation via 402 response.

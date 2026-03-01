@@ -138,7 +138,7 @@ func (c *Client) GetMeta(pnode, path string) (*MetaResponse, error) {
 	}
 
 	var meta MetaResponse
-	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+	if err := decodeJSON(resp.Body, &meta); err != nil {
 		return nil, fmt.Errorf("client: decode meta response: %w", err)
 	}
 	return &meta, nil
@@ -173,6 +173,9 @@ func (c *Client) GetData(hash string) (io.ReadCloser, error) {
 // parameter so the server can compute the buyer-specific capsule.
 // Endpoint: GET /_bitfs/buy/{txid}[?buyer_pubkey=...]
 func (c *Client) GetBuyInfo(txid string, buyerPubKeyHex ...string) (*BuyInfo, error) {
+	if err := validateTxID(txid); err != nil {
+		return nil, err
+	}
 	reqURL := fmt.Sprintf("%s/_bitfs/buy/%s", c.BaseURL, txid)
 	if len(buyerPubKeyHex) > 0 && buyerPubKeyHex[0] != "" {
 		q := url.Values{}
@@ -191,7 +194,7 @@ func (c *Client) GetBuyInfo(txid string, buyerPubKeyHex ...string) (*BuyInfo, er
 	}
 
 	var info BuyInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+	if err := decodeJSON(resp.Body, &info); err != nil {
 		return nil, fmt.Errorf("client: decode buy info: %w", err)
 	}
 	return &info, nil
@@ -201,6 +204,9 @@ func (c *Client) GetBuyInfo(txid string, buyerPubKeyHex ...string) (*BuyInfo, er
 // The raw transaction bytes are sent as application/octet-stream.
 // Endpoint: POST /_bitfs/buy/{txid}
 func (c *Client) SubmitHTLC(txid string, htlcRawTx []byte) (*CapsuleResponse, error) {
+	if err := validateTxID(txid); err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("%s/_bitfs/buy/%s", c.BaseURL, txid)
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(htlcRawTx))
@@ -220,7 +226,7 @@ func (c *Client) SubmitHTLC(txid string, htlcRawTx []byte) (*CapsuleResponse, er
 	}
 
 	var capsule CapsuleResponse
-	if err := json.NewDecoder(resp.Body).Decode(&capsule); err != nil {
+	if err := decodeJSON(resp.Body, &capsule); err != nil {
 		return nil, fmt.Errorf("client: decode capsule response: %w", err)
 	}
 	return &capsule, nil
@@ -263,7 +269,7 @@ func (c *Client) GetVersions(pnode, path string) ([]VersionEntry, error) {
 	}
 
 	var versions []VersionEntry
-	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+	if err := decodeJSON(resp.Body, &versions); err != nil {
 		return nil, fmt.Errorf("client: decode versions: %w", err)
 	}
 	return versions, nil
@@ -280,6 +286,9 @@ type SPVProofResponse struct {
 // VerifySPV requests SPV verification of a transaction from the daemon.
 // Endpoint: GET /_bitfs/spv/proof/{txid}
 func (c *Client) VerifySPV(txid string) (*SPVProofResponse, error) {
+	if err := validateTxID(txid); err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("%s/_bitfs/spv/proof/%s", c.BaseURL, txid)
 
 	resp, err := c.HTTPClient.Get(url)
@@ -293,7 +302,7 @@ func (c *Client) VerifySPV(txid string) (*SPVProofResponse, error) {
 	}
 
 	var result SPVProofResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := decodeJSON(resp.Body, &result); err != nil {
 		return nil, fmt.Errorf("client: decode SPV proof response: %w", err)
 	}
 	return &result, nil
@@ -315,7 +324,7 @@ func (c *Client) GetSales(status string, limit int) ([]SaleRecord, error) {
 	}
 
 	var records []SaleRecord
-	if err := json.NewDecoder(resp.Body).Decode(&records); err != nil {
+	if err := decodeJSON(resp.Body, &records); err != nil {
 		return nil, fmt.Errorf("client: decode sales: %w", err)
 	}
 	return records, nil
@@ -354,6 +363,15 @@ func wrapNetworkError(err error) error {
 	return fmt.Errorf("%w: %w", ErrNetwork, err)
 }
 
+// maxResponseSize is the maximum JSON response body size (10 MB).
+const maxResponseSize = 10 << 20
+
+// decodeJSON decodes a JSON response body with a size limit to prevent
+// unbounded memory allocation from malicious or oversized responses.
+func decodeJSON(body io.Reader, v interface{}) error {
+	return json.NewDecoder(io.LimitReader(body, maxResponseSize)).Decode(v)
+}
+
 // validateHex validates that s is a valid hex string decoding to exactly expectedBytes bytes.
 func validateHex(s string, expectedBytes int, name string) error {
 	if len(s) != expectedBytes*2 {
@@ -361,6 +379,17 @@ func validateHex(s string, expectedBytes int, name string) error {
 	}
 	if _, err := hex.DecodeString(s); err != nil {
 		return fmt.Errorf("client: invalid %s hex: %w", name, err)
+	}
+	return nil
+}
+
+// validateTxID validates that txid is a 64-character hex string (32 bytes).
+func validateTxID(txid string) error {
+	if len(txid) != 64 {
+		return fmt.Errorf("client: invalid txid length: %d", len(txid))
+	}
+	if _, err := hex.DecodeString(txid); err != nil {
+		return fmt.Errorf("client: invalid txid hex: %w", err)
 	}
 	return nil
 }

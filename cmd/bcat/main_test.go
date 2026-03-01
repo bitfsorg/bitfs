@@ -1454,7 +1454,7 @@ func TestVerify_Confirmed(t *testing.T) {
 				FileSize: uint64(len(plaintext)),
 				KeyHash:  keyHashHex,
 				Access:   "free",
-				TxID:     "abc123",
+				TxID:     strings.Repeat("ab", 32),
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1463,7 +1463,7 @@ func TestVerify_Confirmed(t *testing.T) {
 		},
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.SPVProofResponse{
-				TxID:        "abc123",
+				TxID:        strings.Repeat("ab", 32),
 				Confirmed:   true,
 				BlockHash:   "000000000000000000",
 				BlockHeight: 850000,
@@ -1502,7 +1502,7 @@ func TestVerify_Unconfirmed(t *testing.T) {
 				FileSize: uint64(len(plaintext)),
 				KeyHash:  keyHashHex,
 				Access:   "free",
-				TxID:     "def456",
+				TxID:     strings.Repeat("de", 32),
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1511,7 +1511,7 @@ func TestVerify_Unconfirmed(t *testing.T) {
 		},
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.SPVProofResponse{
-				TxID:      "def456",
+				TxID:      strings.Repeat("de", 32),
 				Confirmed: false,
 			})
 		},
@@ -1537,7 +1537,7 @@ func TestVerify_SPVFails(t *testing.T) {
 				FileSize: 10,
 				KeyHash:  testKeyHash("ff"),
 				Access:   "free",
-				TxID:     "bad-tx",
+				TxID:     strings.Repeat("ba", 32),
 			})
 		},
 		nil,

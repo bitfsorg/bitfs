@@ -64,3 +64,64 @@ func TestLoadConfig_InvalidKey(t *testing.T) {
 	_, err := LoadConfig(LoadConfigOpts{WalletKeyFlag: "not-hex"})
 	assert.Error(t, err)
 }
+
+func TestResolveWalletKey_Literal(t *testing.T) {
+	got, err := resolveWalletKey(testKeyHex)
+	require.NoError(t, err)
+	assert.Equal(t, testKeyHex, got)
+}
+
+func TestResolveWalletKey_FromFile(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "key.hex")
+	require.NoError(t, os.WriteFile(keyFile, []byte("  "+testKeyHex+"\n"), 0600))
+
+	got, err := resolveWalletKey("@" + keyFile)
+	require.NoError(t, err)
+	assert.Equal(t, testKeyHex, got, "should trim whitespace from file contents")
+}
+
+func TestResolveWalletKey_EmptyFilePath(t *testing.T) {
+	_, err := resolveWalletKey("@")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "empty file path")
+}
+
+func TestResolveWalletKey_MissingFile(t *testing.T) {
+	_, err := resolveWalletKey("@/nonexistent/path/key.hex")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "read wallet key file")
+}
+
+func TestResolveWalletKey_EmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "empty.hex")
+	require.NoError(t, os.WriteFile(keyFile, []byte("   \n  "), 0600))
+
+	_, err := resolveWalletKey("@" + keyFile)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is empty")
+}
+
+func TestLoadConfig_CLIFlagFromFile(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "key.hex")
+	require.NoError(t, os.WriteFile(keyFile, []byte(testKeyHex+"\n"), 0600))
+
+	cfg, err := LoadConfig(LoadConfigOpts{WalletKeyFlag: "@" + keyFile})
+	require.NoError(t, err)
+	assert.NotNil(t, cfg.PrivKey)
+}
+
+func TestLoadConfig_EnvVarFromFile(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "key.hex")
+	require.NoError(t, os.WriteFile(keyFile, []byte(testKeyHex+"\n"), 0600))
+
+	cfg, err := LoadConfig(LoadConfigOpts{
+		DataDir: dir,
+		Env:     map[string]string{"BITFS_WALLET_KEY": "@" + keyFile},
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, cfg.PrivKey)
+}

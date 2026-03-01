@@ -2091,12 +2091,12 @@ func TestVerifyFlag_SPVSuccess_Confirmed(t *testing.T) {
 	mux.HandleFunc("/_bitfs/meta/", func(w http.ResponseWriter, r *http.Request) {
 		serveJSON(w, client.MetaResponse{
 			PNode: testPubKey, Type: "file", Path: "/verified.txt",
-			KeyHash: keyHashHex, Access: "free", TxID: "abc123txid",
+			KeyHash: keyHashHex, Access: "free", TxID: strings.Repeat("ab", 32),
 		})
 	})
 	mux.HandleFunc("/_bitfs/spv/proof/", func(w http.ResponseWriter, r *http.Request) {
 		serveJSON(w, client.SPVProofResponse{
-			TxID: "abc123txid", Confirmed: true, BlockHeight: 12345,
+			TxID: strings.Repeat("ab", 32), Confirmed: true, BlockHeight: 12345,
 		})
 	})
 	mux.HandleFunc("/_bitfs/data/", func(w http.ResponseWriter, r *http.Request) {
@@ -2133,12 +2133,12 @@ func TestVerifyFlag_SPVSuccess_Unconfirmed(t *testing.T) {
 	mux.HandleFunc("/_bitfs/meta/", func(w http.ResponseWriter, r *http.Request) {
 		serveJSON(w, client.MetaResponse{
 			PNode: testPubKey, Type: "file", Path: "/unconfirmed.txt",
-			KeyHash: keyHashHex, Access: "free", TxID: "pending-txid",
+			KeyHash: keyHashHex, Access: "free", TxID: strings.Repeat("cd", 32),
 		})
 	})
 	mux.HandleFunc("/_bitfs/spv/proof/", func(w http.ResponseWriter, r *http.Request) {
 		serveJSON(w, client.SPVProofResponse{
-			TxID: "pending-txid", Confirmed: false,
+			TxID: strings.Repeat("cd", 32), Confirmed: false,
 		})
 	})
 	mux.HandleFunc("/_bitfs/data/", func(w http.ResponseWriter, r *http.Request) {
@@ -2163,7 +2163,7 @@ func TestVerifyFlag_SPVFailure(t *testing.T) {
 	mux.HandleFunc("/_bitfs/meta/", func(w http.ResponseWriter, r *http.Request) {
 		serveJSON(w, client.MetaResponse{
 			PNode: testPubKey, Type: "file", Path: "/bad-spv.txt",
-			KeyHash: testKeyHash("aa"), Access: "free", TxID: "bad-txid",
+			KeyHash: testKeyHash("aa"), Access: "free", TxID: strings.Repeat("ba", 32),
 		})
 	})
 	mux.HandleFunc("/_bitfs/spv/proof/", func(w http.ResponseWriter, r *http.Request) {

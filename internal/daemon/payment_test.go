@@ -580,6 +580,10 @@ func TestFullPurchaseFlow(t *testing.T) {
 	encryptedContent := []byte("super-secret-encrypted-file-content")
 	store.Put(keyHashHex, encryptedContent)
 
+	fileTxID := make([]byte, 32)
+	for i := range fileTxID {
+		fileTxID[i] = byte(i + 0xA0)
+	}
 	meta.nodes["/premium/secret.dat"] = &NodeInfo{
 		Type:       "file",
 		MimeType:   "application/octet-stream",
@@ -588,6 +592,7 @@ func TestFullPurchaseFlow(t *testing.T) {
 		PricePerKB: 200,
 		PNode:      validPnodeBytes(),
 		KeyHash:    keyHash,
+		FileTxID:   fileTxID,
 	}
 
 	// Step 1: Request the paid content, get a 402 with invoice.

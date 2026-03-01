@@ -23,6 +23,11 @@ func testHash() string {
 	return strings.Repeat("ab", 32)
 }
 
+// testTxID returns a valid 64-hex-char txid for testing.
+func testTxID() string {
+	return strings.Repeat("cd", 32)
+}
+
 // --- New() and configuration tests ---
 
 func TestNew_DefaultTimeout(t *testing.T) {
@@ -213,6 +218,7 @@ func TestGetData_NetworkError(t *testing.T) {
 // --- GetBuyInfo tests ---
 
 func TestGetBuyInfo_Success(t *testing.T) {
+	txid := testTxID()
 	info := BuyInfo{
 		CapsuleHash: "abc123",
 		Price:       5000,
@@ -221,14 +227,14 @@ func TestGetBuyInfo_Success(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/_bitfs/buy/txid123", r.URL.Path)
+		assert.Equal(t, "/_bitfs/buy/"+txid, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(info)
 	}))
 	defer srv.Close()
 
 	c := New(srv.URL)
-	got, err := c.GetBuyInfo("txid123")
+	got, err := c.GetBuyInfo(txid)
 	require.NoError(t, err)
 
 	assert.Equal(t, "abc123", got.CapsuleHash)
@@ -243,7 +249,7 @@ func TestGetBuyInfo_NotFound(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.GetBuyInfo("nonexistent")
+	_, err := c.GetBuyInfo(testTxID())
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -254,7 +260,7 @@ func TestGetBuyInfo_PaymentRequired(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.GetBuyInfo("txid123")
+	_, err := c.GetBuyInfo(testTxID())
 	assert.ErrorIs(t, err, ErrPaymentRequired)
 }
 
@@ -265,9 +271,10 @@ func TestSubmitHTLC_Success(t *testing.T) {
 		Capsule: "encapsulated-key-data-hex",
 	}
 
+	txid := testTxID()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "/_bitfs/buy/txid456", r.URL.Path)
+		assert.Equal(t, "/_bitfs/buy/"+txid, r.URL.Path)
 		assert.Equal(t, "application/octet-stream", r.Header.Get("Content-Type"))
 
 		body, err := io.ReadAll(r.Body)
@@ -280,7 +287,7 @@ func TestSubmitHTLC_Success(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	got, err := c.SubmitHTLC("txid456", []byte("raw-htlc-tx-bytes"))
+	got, err := c.SubmitHTLC(txid, []byte("raw-htlc-tx-bytes"))
 	require.NoError(t, err)
 
 	assert.Equal(t, "encapsulated-key-data-hex", got.Capsule)
@@ -293,7 +300,7 @@ func TestSubmitHTLC_NotFound(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.SubmitHTLC("nonexistent", []byte("tx"))
+	_, err := c.SubmitHTLC(testTxID(), []byte("tx"))
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -304,14 +311,14 @@ func TestSubmitHTLC_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.SubmitHTLC("txid", []byte("tx"))
+	_, err := c.SubmitHTLC(testTxID(), []byte("tx"))
 	assert.ErrorIs(t, err, ErrServer)
 }
 
 func TestSubmitHTLC_NetworkError(t *testing.T) {
 	c := New("http://127.0.0.1:1")
 	c = c.WithTimeout(100 * time.Millisecond)
-	_, err := c.SubmitHTLC("txid", []byte("tx"))
+	_, err := c.SubmitHTLC(testTxID(), []byte("tx"))
 	assert.ErrorIs(t, err, ErrNetwork)
 }
 
@@ -324,7 +331,7 @@ func TestCheckStatus_BadRequest(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.GetBuyInfo("bad")
+	_, err := c.GetBuyInfo(testTxID())
 	// 400 maps to a generic error (not one of our sentinel errors for specific statuses)
 	assert.Error(t, err)
 	assert.NotErrorIs(t, err, ErrNotFound)
@@ -435,7 +442,7 @@ func TestGetBuyInfo_InvalidJSON(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.GetBuyInfo("txid")
+	_, err := c.GetBuyInfo(testTxID())
 	assert.Error(t, err)
 }
 
@@ -447,7 +454,7 @@ func TestSubmitHTLC_InvalidJSON(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.SubmitHTLC("txid", []byte("tx"))
+	_, err := c.SubmitHTLC(testTxID(), []byte("tx"))
 	assert.Error(t, err)
 }
 
@@ -463,7 +470,7 @@ func TestGetBuyInfo_EscapesBuyerPubKey(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, _ = c.GetBuyInfo("testtxid", "abc&injected=true")
+	_, _ = c.GetBuyInfo(testTxID(), "abc&injected=true")
 
 	assert.NotContains(t, capturedURL, "&injected=true", "query parameter injection must be prevented")
 	assert.Contains(t, capturedURL, "buyer_pubkey=abc%26injected%3Dtrue")
@@ -641,16 +648,17 @@ func TestVerifySPV_Success(t *testing.T) {
 		BlockHeight: 800000,
 	}
 
+	txid := testTxID()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/_bitfs/spv/proof/sometxid", r.URL.Path)
+		assert.Equal(t, "/_bitfs/spv/proof/"+txid, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(proof)
 	}))
 	defer srv.Close()
 
 	c := New(srv.URL)
-	got, err := c.VerifySPV("sometxid")
+	got, err := c.VerifySPV(txid)
 	require.NoError(t, err)
 	assert.True(t, got.Confirmed)
 	assert.Equal(t, uint64(800000), got.BlockHeight)
@@ -663,14 +671,14 @@ func TestVerifySPV_NotFound(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.VerifySPV("nonexistent")
+	_, err := c.VerifySPV(testTxID())
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestVerifySPV_NetworkError(t *testing.T) {
 	c := New("http://127.0.0.1:1")
 	c = c.WithTimeout(100 * time.Millisecond)
-	_, err := c.VerifySPV("txid")
+	_, err := c.VerifySPV(testTxID())
 	assert.ErrorIs(t, err, ErrNetwork)
 }
 
@@ -682,7 +690,7 @@ func TestVerifySPV_InvalidJSON(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	_, err := c.VerifySPV("txid")
+	_, err := c.VerifySPV(testTxID())
 	assert.Error(t, err)
 }
 
@@ -741,4 +749,85 @@ func TestGetSales_InvalidJSON(t *testing.T) {
 	c := New(srv.URL)
 	_, err := c.GetSales("all", 10)
 	assert.Error(t, err)
+}
+
+// --- TxID validation tests ---
+
+func TestGetBuyInfo_InvalidTxID(t *testing.T) {
+	// Server should never be called — validation rejects before HTTP.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("HTTP request should not have been made")
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+
+	tests := []struct {
+		name string
+		txid string
+	}{
+		{"too short", "abcd"},
+		{"too long", strings.Repeat("ab", 33)},
+		{"not hex", strings.Repeat("zz", 32)},
+		{"empty", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := c.GetBuyInfo(tt.txid)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "client:")
+			assert.Contains(t, err.Error(), "txid")
+		})
+	}
+}
+
+func TestSubmitHTLC_InvalidTxID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("HTTP request should not have been made")
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	_, err := c.SubmitHTLC("short", []byte("tx"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "txid")
+}
+
+func TestVerifySPV_InvalidTxID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("HTTP request should not have been made")
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	_, err := c.VerifySPV("short")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "txid")
+}
+
+func TestValidateTxID(t *testing.T) {
+	tests := []struct {
+		name    string
+		txid    string
+		wantErr bool
+	}{
+		{"valid 64 hex chars", strings.Repeat("ab", 32), false},
+		{"valid mixed case", strings.Repeat("Ab", 32), false},
+		{"too short", "abcdef", true},
+		{"too long", strings.Repeat("ab", 33), true},
+		{"not hex", strings.Repeat("zz", 32), true},
+		{"empty", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTxID(tt.txid)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
