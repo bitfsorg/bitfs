@@ -14,9 +14,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/internal/client"
+	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/network"
 	"github.com/bitfsorg/libbitfs-go/x402"
 )
+
+// testCapsuleHash computes the correct capsule hash for test data.
+func testCapsuleHash(txidHex, capsuleHex string) string {
+	txid, _ := hex.DecodeString(txidHex)
+	capsule, _ := hex.DecodeString(capsuleHex)
+	return hex.EncodeToString(method42.ComputeCapsuleHash(txid, capsule))
+}
 
 // testAddr returns a base58 P2PKH address from a 20-byte PKH (testnet).
 func testAddr(pkh []byte) string {
@@ -227,13 +235,14 @@ func TestBuy_SuccessFlow(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
+	txID := "deadbeef"
 	capsuleHex := strings.Repeat("cc", 16)
 	nonceHex := strings.Repeat("dd", 16)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			json.NewEncoder(w).Encode(client.BuyInfo{
-				CapsuleHash:  strings.Repeat("aa", 32),
+				CapsuleHash:  testCapsuleHash(txID, capsuleHex),
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
@@ -249,7 +258,7 @@ func TestBuy_SuccessFlow(t *testing.T) {
 
 	result, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
 			ManualUTXOs: []*x402.HTLCUTXO{
@@ -269,17 +278,20 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
+	txID := "deadbeef"
+	capsuleHex := strings.Repeat("cc", 16)
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			json.NewEncoder(w).Encode(client.BuyInfo{
-				CapsuleHash:  strings.Repeat("aa", 32),
+				CapsuleHash:  testCapsuleHash(txID, capsuleHex),
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{
-				Capsule: strings.Repeat("cc", 16),
+				Capsule: capsuleHex,
 			})
 		}
 	}))
@@ -287,7 +299,7 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 
 	result, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
 			ManualUTXOs: []*x402.HTLCUTXO{
@@ -339,17 +351,20 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 	buyerPKH := pk.PubKey().Hash()
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
+	txID := "deadbeef"
+	capsuleHex := strings.Repeat("cc", 16)
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			json.NewEncoder(w).Encode(client.BuyInfo{
-				CapsuleHash:  strings.Repeat("aa", 32),
+				CapsuleHash:  testCapsuleHash(txID, capsuleHex),
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{
-				Capsule:      strings.Repeat("cc", 16),
+				Capsule:      capsuleHex,
 				CapsuleNonce: "not-hex!",
 			})
 		}
@@ -358,7 +373,7 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 
 	_, err := Buy(&BuyParams{
 		Client: client.New(srv.URL),
-		TxID:   "deadbeef",
+		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
 			ManualUTXOs: []*x402.HTLCUTXO{

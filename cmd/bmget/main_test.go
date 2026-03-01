@@ -705,7 +705,9 @@ func TestRun_WithBuy_SinglePaidFile(t *testing.T) {
 	// Compute capsule for the buyer.
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -738,7 +740,7 @@ func TestRun_WithBuy_SinglePaidFile(t *testing.T) {
 					FileSize:   uint64(len(plaintext)),
 					Access:     "paid",
 					PricePerKB: 50,
-					TxID:       "invoice-paid-001",
+					TxID:       fileTxIDHex,
 					KeyHash:    keyHashHex,
 				})
 			}
@@ -978,7 +980,7 @@ func TestDownloadPaidFile_NoKeyHash(t *testing.T) {
 		Type:    "file",
 		Path:    "/nokey.pdf",
 		Access:  "paid",
-		TxID:    "some-txid",
+		TxID:    strings.Repeat("ab", 32),
 		KeyHash: "", // missing
 	}
 
@@ -1033,7 +1035,9 @@ func TestRun_WithBuy_JSON_SinglePaidFile(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1063,7 +1067,7 @@ func TestRun_WithBuy_JSON_SinglePaidFile(t *testing.T) {
 					FileSize:   uint64(len(plaintext)),
 					Access:     "paid",
 					PricePerKB: 50,
-					TxID:       "invoice-json-001",
+					TxID:       fileTxIDHex,
 					KeyHash:    keyHashHex,
 				})
 			}
@@ -1128,7 +1132,9 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1145,7 +1151,7 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "tx-unit-001",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -1212,7 +1218,9 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1228,7 +1236,7 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "tx-fail-001",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -1268,7 +1276,7 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 		Type:    "file",
 		Path:    "/fail.txt",
 		Access:  "paid",
-		TxID:    "tx-fail-001",
+		TxID:    fileTxIDHex,
 		KeyHash: keyHashHex,
 	}, localPath, cfg)
 
@@ -1292,7 +1300,9 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1345,7 +1355,7 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 		Type:    "file",
 		Path:    "/fail.txt",
 		Access:  "paid",
-		TxID:    "tx-data-fail-001",
+		TxID:    fileTxIDHex,
 		KeyHash: keyHashHex,
 	}, localPath, cfg)
 

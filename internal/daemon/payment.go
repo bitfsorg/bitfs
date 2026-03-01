@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -198,10 +199,11 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 							capsuleHash := method42.ComputeCapsuleHash(invoice.FileTxID, capsule)
 							// Build HTLC script for payment verification.
 							sellerPriv2, _, kpErr := d.wallet.GetSellerKeyPair()
-							var htlcScript []byte
-							if kpErr == nil {
+							if kpErr != nil {
+								log.Printf("[buy] WARN: cannot get seller key pair for HTLC: %v", kpErr)
+							} else {
 								sellerPKH := sellerPriv2.PubKey().Hash()
-								htlcScript, _ = x402.BuildHTLC(&x402.HTLCParams{
+								htlcScript, htlcErr := x402.BuildHTLC(&x402.HTLCParams{
 									BuyerPubKey:  buyerPubBytes,
 									SellerPubKey: sellerPriv2.PubKey().Compressed(),
 									SellerAddr:   sellerPKH,
@@ -210,13 +212,15 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 									Timeout:      x402.DefaultHTLCTimeout,
 									InvoiceID:    invoiceIDBytes,
 								})
+								if htlcErr != nil {
+									log.Printf("[buy] WARN: BuildHTLC failed: %v", htlcErr)
+								} else {
+									invoice.HTLCScript = htlcScript
+								}
 							}
 							invoice.Capsule = capsule
 							invoice.CapsuleNonce = invoiceIDBytes
 							invoice.CapsuleHash = hex.EncodeToString(capsuleHash)
-							if len(htlcScript) > 0 {
-								invoice.HTLCScript = htlcScript
-							}
 						}
 					}
 				}
@@ -306,6 +310,7 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Fallback: verify as P2PKH payment (backwards compatibility).
+		log.Printf("[buy] WARN: invoice %s: no HTLC script, falling back to P2PKH verification", invoice.ID)
 		proof := &x402.PaymentProof{RawTx: htlcBody}
 		inv := &x402.Invoice{
 			ID:          invoice.ID,
@@ -315,7 +320,7 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 			PaymentAddr: invoice.PaymentAddr,
 			Expiry:      invoice.Expiry.Unix(),
 		}
-		if err := x402.VerifyPayment(proof, inv); err != nil {
+		if _, err := x402.VerifyPayment(proof, inv); err != nil {
 			rollbackPaid()
 			writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID", "Payment verification failed")
 			return
@@ -478,7 +483,7 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 		PaymentAddr: invoice.PaymentAddr,
 		Expiry:      invoice.Expiry.Unix(),
 	}
-	if err := x402.VerifyPayment(proof, x402Inv); err != nil {
+	if _, err := x402.VerifyPayment(proof, x402Inv); err != nil {
 		rollbackPaid()
 		writeJSONError(w, http.StatusBadRequest, "VERIFICATION_FAILED", err.Error())
 		return

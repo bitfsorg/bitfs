@@ -362,7 +362,9 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 	// Compute XOR-masked capsule for buyer.
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32) // valid 64 hex chars
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -383,7 +385,7 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 100,
-				TxID:       "abc123txid",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -431,7 +433,10 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 	// Compute XOR-masked capsule for buyer.
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+
+	fileTxIDHex := strings.Repeat("ab", 32) // valid 64 hex chars
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -454,7 +459,7 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice123",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -1196,6 +1201,7 @@ type paidTestSetup struct {
 	SellerAddr      string
 	SellerPubKeyHex string
 	UTXOFlag        string
+	FileTxIDHex     string // 64 hex chars (32 bytes) for capsule hash computation
 }
 
 // newPaidTestSetup creates key pairs, encrypts plaintext, computes capsule and
@@ -1213,7 +1219,11 @@ func newPaidTestSetup(t *testing.T, plaintext []byte) *paidTestSetup {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+
+	// Use a deterministic 32-byte hex txid for capsule hash computation.
+	fileTxIDHex := strings.Repeat("ab", 32) // 64 hex chars
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	utxoTxID := strings.Repeat("ff", 32)
 	return &paidTestSetup{
@@ -1230,6 +1240,7 @@ func newPaidTestSetup(t *testing.T, plaintext []byte) *paidTestSetup {
 		SellerAddr:      func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }(),
 		SellerPubKeyHex: hex.EncodeToString(nodePriv.PubKey().Compressed()),
 		UTXOFlag:        utxoTxID + ":0:100000",
+		FileTxIDHex:     fileTxIDHex,
 	}
 }
 
@@ -1247,7 +1258,7 @@ func paidMockDaemon(t *testing.T, s *paidTestSetup, mimeType string) *httptest.S
 				FileSize:   uint64(len(s.Plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice-test",
+				TxID:       s.FileTxIDHex,
 				KeyHash:    s.KeyHashHex,
 			})
 		},
@@ -1360,7 +1371,7 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 				FileSize:   uint64(len(s.Plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice-broken",
+				TxID:       s.FileTxIDHex,
 				KeyHash:    s.KeyHashHex,
 			})
 		},
@@ -1609,7 +1620,7 @@ func TestPaid_WithBuy_MissingKeyHash(t *testing.T) {
 				FileSize:   7,
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice-nohash",
+				TxID:       s.FileTxIDHex,
 				KeyHash:    "", // Empty key hash
 			})
 		},
@@ -1654,7 +1665,7 @@ func TestPaid_WithBuy_DataFetchError_NonJSON(t *testing.T) {
 				FileSize:   4,
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice-datafail",
+				TxID:       s.FileTxIDHex,
 				KeyHash:    s.KeyHashHex,
 			})
 		},

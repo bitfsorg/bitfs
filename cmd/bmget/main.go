@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -124,10 +125,14 @@ Examples:
 		return 6
 	}
 
-	// Filter file entries from children.
+	// Filter file entries from children, rejecting unsafe names.
 	var files []client.ChildEntry
 	for _, child := range meta.Children {
 		if child.Type == "file" {
+			if strings.Contains(child.Name, "..") || strings.ContainsAny(child.Name, "/\\") || child.Name == "" {
+				fmt.Fprintf(stderr, "bmget: skipping unsafe child name %q\n", child.Name)
+				continue
+			}
 			files = append(files, child)
 		}
 	}

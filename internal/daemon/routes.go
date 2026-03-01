@@ -39,19 +39,19 @@ func (d *Daemon) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /_bitfs/pay/{invoice_id}", wrap(d.handlePayInvoice))
 	mux.HandleFunc("OPTIONS /_bitfs/pay/{invoice_id}", wrap(d.handleOptions))
 
-	// Sales listing
-	mux.HandleFunc("GET /_bitfs/sales", wrap(d.handleSales))
+	// Sales listing (admin-protected)
+	mux.HandleFunc("GET /_bitfs/sales", wrap(d.withAdminAuth(d.handleSales)))
 
 	// SPV proof endpoint
 	mux.HandleFunc("GET /_bitfs/spv/proof/{txid}", wrap(d.handleSPVProof))
 	mux.HandleFunc("OPTIONS /_bitfs/spv/proof/{txid}", wrap(d.handleOptions))
 
-	// Dashboard API
-	mux.HandleFunc("GET /_bitfs/dashboard/status", wrap(d.handleDashboardStatus))
-	mux.HandleFunc("GET /_bitfs/dashboard/storage", wrap(d.handleDashboardStorage))
-	mux.HandleFunc("GET /_bitfs/dashboard/wallet", wrap(d.handleDashboardWallet))
-	mux.HandleFunc("GET /_bitfs/dashboard/network", wrap(d.handleDashboardNetwork))
-	mux.HandleFunc("GET /_bitfs/dashboard/logs", wrap(d.handleDashboardLogs))
+	// Dashboard API (admin-protected)
+	mux.HandleFunc("GET /_bitfs/dashboard/status", wrap(d.withAdminAuth(d.handleDashboardStatus)))
+	mux.HandleFunc("GET /_bitfs/dashboard/storage", wrap(d.withAdminAuth(d.handleDashboardStorage)))
+	mux.HandleFunc("GET /_bitfs/dashboard/wallet", wrap(d.withAdminAuth(d.handleDashboardWallet)))
+	mux.HandleFunc("GET /_bitfs/dashboard/network", wrap(d.withAdminAuth(d.handleDashboardNetwork)))
+	mux.HandleFunc("GET /_bitfs/dashboard/logs", wrap(d.withAdminAuth(d.handleDashboardLogs)))
 
 	// Paymail/BSV Alias
 	mux.HandleFunc("GET /.well-known/bsvalias", wrap(d.handleBSVAlias))
@@ -78,6 +78,25 @@ func (d *Daemon) withMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
+		next(w, r)
+	}
+}
+
+// withAdminAuth wraps a handler with bearer token authentication for admin endpoints.
+// If no admin_token is configured, the endpoint is accessible without auth (backward compatible).
+func (d *Daemon) withAdminAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := d.config.Security.AdminToken
+		if token == "" {
+			// No token configured: allow access (backward compatible).
+			next(w, r)
+			return
+		}
+		auth := r.Header.Get("Authorization")
+		if auth == "" || auth != "Bearer "+token {
+			writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Admin authentication required")
+			return
+		}
 		next(w, r)
 	}
 }

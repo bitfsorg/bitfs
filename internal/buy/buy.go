@@ -1,12 +1,14 @@
 package buy
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bitfsorg/bitfs/internal/client"
+	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/network"
 	"github.com/bitfsorg/libbitfs-go/x402"
 )
@@ -77,6 +79,15 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 		return nil, fmt.Errorf("buyer: invalid seller pubkey hex: %w", err)
 	}
 
+	// Decode invoice ID if present (16 bytes, hex-encoded).
+	var invoiceID []byte
+	if buyInfo.InvoiceID != "" {
+		invoiceID, err = hex.DecodeString(buyInfo.InvoiceID)
+		if err != nil {
+			return nil, fmt.Errorf("buyer: invalid invoice ID hex: %w", err)
+		}
+	}
+
 	// Step 2: Resolve UTXOs.
 	utxos, err := resolveUTXOs(params, buyInfo.Price)
 	if err != nil {
@@ -96,6 +107,7 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 		UTXOs:        utxos,
 		ChangeAddr:   buyerPKH,
 		FeeRate:      defaultFeeRate,
+		InvoiceID:    invoiceID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("buyer: build HTLC funding tx: %w", err)
@@ -111,6 +123,17 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 	capsule, err := hex.DecodeString(capsuleResp.Capsule)
 	if err != nil {
 		return nil, fmt.Errorf("buyer: invalid capsule hex in response: %w", err)
+	}
+
+	// Verify capsule hash matches expected value (detect tampered responses).
+	// capsuleHash = SHA256(fileTxID || capsule), binding to the specific file.
+	fileTxID, err := hex.DecodeString(params.TxID)
+	if err != nil {
+		return nil, fmt.Errorf("buyer: invalid file txid hex: %w", err)
+	}
+	computedHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	if !bytes.Equal(computedHash, capsuleHash) {
+		return nil, fmt.Errorf("buyer: capsule hash mismatch: received capsule does not match expected hash")
 	}
 
 	// Decode capsule nonce if present (used for per-purchase unlinkability).

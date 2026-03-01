@@ -124,6 +124,7 @@ type SecurityConfig struct {
 	CORS           CORSConfig      `toml:"cors"`
 	MaxRequestSize string          `toml:"max_request_size"`
 	TrustProxy     bool            `toml:"trust_proxy"`
+	AdminToken     string          `toml:"admin_token"` // Bearer token for admin endpoints (dashboard, sales)
 }
 
 // RateLimitConfig holds rate limiting configuration.

@@ -359,7 +359,9 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 	// Compute XOR-masked capsule for buyer.
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -377,7 +379,7 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 100,
-				TxID:       "abc123txid",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -427,7 +429,9 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 	// Compute XOR-masked capsule for buyer.
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -450,7 +454,7 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 				FileSize:   uint64(len(plaintext)),
 				Access:     "paid",
 				PricePerKB: 50,
-				TxID:       "invoice123",
+				TxID:       fileTxIDHex,
 				KeyHash:    keyHashHex,
 			})
 		},
@@ -1402,7 +1406,9 @@ func TestJSON_PaidContent_WithBuy_Success(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1418,7 +1424,7 @@ func TestJSON_PaidContent_WithBuy_Success(t *testing.T) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
 				MimeType: "text/plain", FileSize: uint64(len(plaintext)),
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1465,7 +1471,9 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1480,7 +1488,7 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1727,7 +1735,9 @@ func TestPaid_WithBuy_DataFetchError(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1739,7 +1749,7 @@ func TestPaid_WithBuy_DataFetchError(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1783,7 +1793,9 @@ func TestPaid_WithBuy_NoOutputFlag(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1796,7 +1808,7 @@ func TestPaid_WithBuy_NoOutputFlag(t *testing.T) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/autoname-paid.txt",
 				MimeType: "text/plain", FileSize: uint64(len(plaintext)),
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1851,7 +1863,9 @@ func TestPaid_WithBuy_DecryptFailure(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1866,7 +1880,7 @@ func TestPaid_WithBuy_DecryptFailure(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1908,7 +1922,9 @@ func TestJSON_PaidContent_WithBuy_DecryptFailure(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1923,7 +1939,7 @@ func TestJSON_PaidContent_WithBuy_DecryptFailure(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -2000,7 +2016,9 @@ func TestPaid_WithBuy_InvalidPNodeKey(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2018,7 +2036,7 @@ func TestPaid_WithBuy_InvalidPNodeKey(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: badPNodeHex, Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -2297,7 +2315,9 @@ func TestPaid_WithBuy_CreateFileError(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2310,7 +2330,7 @@ func TestPaid_WithBuy_CreateFileError(t *testing.T) {
 			serveJSON(w, client.MetaResponse{
 				PNode: nodePubHex, Type: "file", Path: "/paid.txt",
 				MimeType: "text/plain", FileSize: uint64(len(plaintext)),
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
@@ -2386,7 +2406,9 @@ func TestPaid_WithBuy_InvalidPNodeHex(t *testing.T) {
 
 	capsule, err := method42.ComputeCapsule(nodePriv, nodePriv.PubKey(), buyerPriv.PubKey(), encResult.KeyHash)
 	require.NoError(t, err)
-	capsuleHash := method42.ComputeCapsuleHash(make([]byte, 32), capsule)
+	fileTxIDHex := strings.Repeat("ab", 32)
+	fileTxID, _ := hex.DecodeString(fileTxIDHex)
+	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2401,7 +2423,7 @@ func TestPaid_WithBuy_InvalidPNodeHex(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			serveJSON(w, client.MetaResponse{
 				PNode: "zzzz-bad-hex", Type: "file", Path: "/paid.txt",
-				Access: "paid", PricePerKB: 50, TxID: "invoice123", KeyHash: keyHashHex,
+				Access: "paid", PricePerKB: 50, TxID: fileTxIDHex, KeyHash: keyHashHex,
 			})
 		},
 		func(w http.ResponseWriter, r *http.Request) {
