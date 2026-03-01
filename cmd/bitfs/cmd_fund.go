@@ -97,7 +97,7 @@ func runWalletFund(args []string) int {
 	fmt.Printf("Checking address %s for UTXOs...\n", addr.AddressString)
 	ctx := context.Background()
 	pubHex := hex.EncodeToString(feeKP.PublicKey.Compressed())
-	if err := eng.RefreshFeeUTXOs(ctx, addr.AddressString, pubHex); err != nil {
+	if err := eng.RefreshFeeUTXOs(ctx, addr.AddressString, pubHex, wallet.ExternalChain, feeIdx); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: query UTXOs: %v\n", err)
 		return exitNetError
 	}

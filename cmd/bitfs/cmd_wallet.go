@@ -349,7 +349,7 @@ func runWalletBalance(args []string) int {
 				continue
 			}
 			pubHex := hex.EncodeToString(kp.PublicKey.Compressed())
-			if err := eng.RefreshFeeUTXOs(ctx, addr.AddressString, pubHex); err != nil {
+			if err := eng.RefreshFeeUTXOs(ctx, addr.AddressString, pubHex, wallet.ExternalChain, i); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: refresh index %d: %v\n", i, err)
 				continue
 			}
