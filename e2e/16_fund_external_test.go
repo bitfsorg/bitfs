@@ -26,8 +26,7 @@ import (
 // This simulates the `bitfs fund` command pattern where the engine does not
 // control the funding transaction -- it only discovers and registers the UTXO.
 func TestFundExternalUTXO(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -45,7 +44,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	require.NoError(t, err, "derive fee key")
 	t.Logf("fee key path: %s", feeKey.Path)
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "address from pubkey")
 	t.Logf("fee address: %s", feeAddr.AddressString)
 
@@ -67,12 +66,11 @@ func TestFundExternalUTXO(t *testing.T) {
 	require.NoError(t, err, "send 0.01 BSV to fee address externally")
 	t.Logf("external funding txid: %s", fundTxID)
 
-	// Mine 1 block to confirm.
-	_, err = node.MineBlocks(ctx, 1, mineAddr)
-	require.NoError(t, err, "mine confirmation block")
+	// Wait for funding tx to confirm.
+	require.NoError(t, node.WaitForConfirmation(ctx, fundTxID, 1), "wait for funding confirmation")
 
 	// ==================================================================
-	// Step 4: Retrieve UTXO details from regtest RPC.
+	// Step 4: Retrieve UTXO details from RPC.
 	// ==================================================================
 	utxos, err := node.ListUnspent(ctx, feeAddr.AddressString)
 	require.NoError(t, err, "list unspent for fee address")
@@ -158,9 +156,8 @@ func TestFundExternalUTXO(t *testing.T) {
 	require.NoError(t, err, "broadcast raw transaction")
 	t.Logf("broadcast txid: %s", broadcastTxID)
 
-	// Mine 1 block to confirm.
-	_, err = node.MineBlocks(ctx, 1, mineAddr)
-	require.NoError(t, err, "mine confirmation block for root tx")
+	// Wait for root tx confirmation.
+	require.NoError(t, node.WaitForConfirmation(ctx, broadcastTxID, 1), "wait for root tx confirmation")
 
 	// ==================================================================
 	// Step 8: Verify the tx is on chain and structurally correct.

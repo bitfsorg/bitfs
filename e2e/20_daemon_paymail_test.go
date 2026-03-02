@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
@@ -28,7 +29,8 @@ func setupPaymailServer(t *testing.T) (*httptest.Server, *wallet.Wallet) {
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	cfg := testutil.LoadConfig()
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	walletSvc := &testWalletService{w: w}

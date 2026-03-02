@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
@@ -52,7 +53,8 @@ func setupClientTestDaemon(
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	cfg := testutil.LoadConfig()
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	walletSvc := &testWalletService{w: w}
@@ -85,11 +87,12 @@ func setupClientTestDaemon(
 //     KeyHash, Path) all match the mock data
 func TestClientGetMeta(t *testing.T) {
 	// Derive a real key to use as the pnode.
+	cfg := testutil.LoadConfig()
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err)
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err)
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err)
 
 	fileKey, err := w.DeriveNodeKey(0, []uint32{0}, nil)
@@ -143,11 +146,12 @@ func TestClientGetMeta(t *testing.T) {
 //   - Verify: the body matches the stored ciphertext exactly
 func TestClientGetData(t *testing.T) {
 	// Derive a key and encrypt content.
+	cfg := testutil.LoadConfig()
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err)
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err)
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err)
 
 	fileKey, err := w.DeriveNodeKey(0, []uint32{0}, nil)

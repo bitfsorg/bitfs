@@ -18,8 +18,7 @@ import (
 // attempts to broadcast a second tx that spends the same fee UTXO. The regtest
 // node must reject the second broadcast as a double-spend.
 func TestDoubleSpendRejected(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -32,7 +31,7 @@ func TestDoubleSpendRejected(t *testing.T) {
 	feeKey, err := w.DeriveFeeKey(wallet.ExternalChain, 0)
 	require.NoError(t, err, "derive fee key")
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
@@ -85,8 +84,7 @@ func TestDoubleSpendRejected(t *testing.T) {
 // TestMalformedTxBroadcast sends invalid hex data to SendRawTransaction and
 // verifies the regtest node returns an RPC error.
 func TestMalformedTxBroadcast(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -101,8 +99,7 @@ func TestMalformedTxBroadcast(t *testing.T) {
 // that only has dust-level funds (546 sat). The tx builder should reject this
 // because the UTXO cannot cover the P_node dust output plus the mining fee.
 func TestInsufficientFeeUTXO(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -148,8 +145,7 @@ func TestInsufficientFeeUTXO(t *testing.T) {
 // TestBroadcastEmptyTx sends an empty string to SendRawTransaction and
 // verifies the regtest node returns an error.
 func TestBroadcastEmptyTx(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

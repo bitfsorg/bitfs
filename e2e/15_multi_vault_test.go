@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/wallet"
 )
@@ -19,13 +20,15 @@ import (
 // account 2 (m/44'/236'/2'/0/0). Their root keys must be distinct.
 func TestVaultKeyIsolation(t *testing.T) {
 	// Create a fresh wallet.
+	cfg := testutil.LoadConfig()
+
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err, "generate mnemonic")
 
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "derive seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	wState := wallet.NewWalletState()
@@ -102,13 +105,15 @@ func TestVaultKeyIsolation(t *testing.T) {
 // completely different, making cross-vault decryption impossible.
 func TestVaultEncryptionIsolation(t *testing.T) {
 	// Create a fresh wallet with two vaults.
+	cfg := testutil.LoadConfig()
+
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err, "generate mnemonic")
 
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "derive seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	wState := wallet.NewWalletState()
@@ -237,13 +242,15 @@ func TestVaultEncryptionIsolation(t *testing.T) {
 // AccessPaid mode. Since Paid uses the same ECDH as Private (D_node rather
 // than scalar 1), isolation properties are identical.
 func TestVaultEncryptionIsolationPaid(t *testing.T) {
+	cfg := testutil.LoadConfig()
+
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err, "generate mnemonic")
 
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "derive seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	wState := wallet.NewWalletState()
@@ -293,13 +300,15 @@ func TestVaultEncryptionIsolationPaid(t *testing.T) {
 // filesystem paths (not just root keys). Two vaults deriving keys for
 // the same relative path (e.g., /0/1/2) must produce different keys.
 func TestVaultDeepKeyIsolation(t *testing.T) {
+	cfg := testutil.LoadConfig()
+
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
 	require.NoError(t, err, "generate mnemonic")
 
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "derive seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	wState := wallet.NewWalletState()

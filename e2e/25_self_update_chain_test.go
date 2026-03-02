@@ -24,8 +24,7 @@ import (
 //
 // Version chain: file_tx (v0) -> update1_tx (v1) -> update2_tx (v2) -> update3_tx (v3)
 func TestMultipleUpdates(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
@@ -52,18 +51,10 @@ func TestMultipleUpdates(t *testing.T) {
 	t.Logf("dir key:  %s", dirKey.Path)
 	t.Logf("file key: %s", fileKey.Path)
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -82,7 +73,7 @@ func TestMultipleUpdates(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
 	rootNodeScript, err := tx.BuildP2PKHScript(rootKey.PublicKey)
@@ -114,7 +105,7 @@ func TestMultipleUpdates(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
 	dirNodeScript, err := tx.BuildP2PKHScript(dirKey.PublicKey)
@@ -155,7 +146,7 @@ func TestMultipleUpdates(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("file txid (v0): %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 5: Perform 3 sequential SelfUpdates (v1, v2, v3).
@@ -212,7 +203,7 @@ func TestMultipleUpdates(t *testing.T) {
 			txIDStr, err := node.SendRawTransaction(ctx, signedHex)
 			require.NoError(t, err, "broadcast self-update tx %s", ver.label)
 			t.Logf("%s txid: %s", ver.label, txIDStr)
-			mineOneBlock(t)
+			require.NoError(t, node.WaitForConfirmation(ctx, txIDStr, 1), "wait for confirmation")
 
 			allTxIDs = append(allTxIDs, txIDStr)
 			allContents = append(allContents, ver.content)
@@ -300,8 +291,7 @@ func TestMultipleUpdates(t *testing.T) {
 // the node's identity: P_node and parentTxID remain unchanged across updates.
 // Only the TxID and payload change.
 func TestUpdatePreservesIdentity(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
@@ -323,18 +313,10 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	fileKey, err := w.DeriveNodeKey(0, []uint32{0, 0}, nil)
 	require.NoError(t, err, "derive file node key")
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root -> dir -> file chain.
@@ -352,9 +334,9 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	rootSignedHex, err := rootBatch.Sign(rootResult)
 	require.NoError(t, err, "sign root tx")
 
-	_, err = node.SendRawTransaction(ctx, rootSignedHex)
+	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
 	rootNodeScript, err := tx.BuildP2PKHScript(rootKey.PublicKey)
@@ -381,9 +363,9 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	dirSignedHex, err := dirBatch.Sign(dirResult)
 	require.NoError(t, err, "sign dir tx")
 
-	_, err = node.SendRawTransaction(ctx, dirSignedHex)
+	dirTxIDStr2, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr2, 1), "wait for confirmation")
 
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
 	dirNodeScript, err := tx.BuildP2PKHScript(dirKey.PublicKey)
@@ -421,7 +403,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("original file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 3: Parse original version from chain to capture identity.
@@ -477,7 +459,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	updateTxIDStr, err := node.SendRawTransaction(ctx, updateSignedHex)
 	require.NoError(t, err, "broadcast self-update tx")
 	t.Logf("self-update txid: %s", updateTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, updateTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 5: Parse updated version from chain and verify identity.
