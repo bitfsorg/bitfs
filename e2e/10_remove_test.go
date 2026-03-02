@@ -31,8 +31,7 @@ import (
 // Remove = SelfUpdate dir with payload that omits the file reference.
 // Verify: new dir version on-chain, P_node and parentTxID preserved, file entry gone.
 func TestRemoveFile(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -64,21 +63,12 @@ func TestRemoveFile(t *testing.T) {
 	t.Logf("file key:  %s", fileKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -98,7 +88,7 @@ func TestRemoveFile(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -133,7 +123,7 @@ func TestRemoveFile(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare dir's NodeUTXO for spending as parent edge.
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
@@ -171,7 +161,7 @@ func TestRemoveFile(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file+dir-refresh tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// Dir's refreshed NodeUTXO comes from the SelfUpdate op (index 1).
 	dirNodeUTXORefresh := fileResult.NodeOps[1].NodeUTXO
@@ -209,7 +199,7 @@ func TestRemoveFile(t *testing.T) {
 		removeTxIDStr, err := node.SendRawTransaction(ctx, removeSignedHex)
 		require.NoError(t, err, "broadcast remove-file tx")
 		t.Logf("remove-file txid: %s", removeTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, removeTxIDStr, 1), "wait for confirmation")
 
 		// Retrieve the new directory version from chain.
 		rawBytes, err := node.GetRawTransaction(ctx, removeTxIDStr)
@@ -273,8 +263,7 @@ func TestRemoveFile(t *testing.T) {
 // Remove = SelfUpdate dir_parent with payload that omits dir_child reference.
 // Verify: new dir version on-chain, P_node and parentTxID preserved, dir_child entry gone.
 func TestRemoveDirectory(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -306,21 +295,12 @@ func TestRemoveDirectory(t *testing.T) {
 	t.Logf("dir_child key:  %s", dirChildKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -340,7 +320,7 @@ func TestRemoveDirectory(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -375,7 +355,7 @@ func TestRemoveDirectory(t *testing.T) {
 	dirParentTxIDStr, err := node.SendRawTransaction(ctx, dirParentSignedHex)
 	require.NoError(t, err, "broadcast dir_parent tx")
 	t.Logf("dir_parent txid: %s", dirParentTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirParentTxIDStr, 1), "wait for confirmation")
 
 	// Prepare dir_parent's NodeUTXO for spending as parent edge.
 	dirParentNodeUTXO := dirParentResult.NodeOps[0].NodeUTXO
@@ -412,7 +392,7 @@ func TestRemoveDirectory(t *testing.T) {
 	dirChildTxIDStr, err := node.SendRawTransaction(ctx, dirChildSignedHex)
 	require.NoError(t, err, "broadcast dir_child+parent-refresh tx")
 	t.Logf("dir_child txid: %s", dirChildTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirChildTxIDStr, 1), "wait for confirmation")
 
 	// Dir_parent's refreshed NodeUTXO comes from the SelfUpdate op (index 1).
 	dirParentNodeUTXORefresh := dirChildResult.NodeOps[1].NodeUTXO
@@ -450,7 +430,7 @@ func TestRemoveDirectory(t *testing.T) {
 		removeTxIDStr, err := node.SendRawTransaction(ctx, removeSignedHex)
 		require.NoError(t, err, "broadcast remove-dir tx")
 		t.Logf("remove-dir txid: %s", removeTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, removeTxIDStr, 1), "wait for confirmation")
 
 		// Retrieve the new directory version from chain.
 		rawBytes, err := node.GetRawTransaction(ctx, removeTxIDStr)
@@ -518,8 +498,7 @@ func TestRemoveDirectory(t *testing.T) {
 //	 +-- dir  (updated, file entry removed)
 //	      +-- file  (orphaned -- still on-chain, but no longer referenced by dir)
 func TestRemoveAndVerifyDAG(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -551,21 +530,12 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	t.Logf("file key:  %s", fileKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -585,7 +555,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -620,7 +590,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare dir's NodeUTXO for spending as parent edge.
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
@@ -657,7 +627,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file+dir-refresh tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// Dir's refreshed NodeUTXO comes from the SelfUpdate op (index 1).
 	dirNodeUTXORefresh := fileResult.NodeOps[1].NodeUTXO
@@ -692,7 +662,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	removeTxIDStr, err := node.SendRawTransaction(ctx, removeSignedHex)
 	require.NoError(t, err, "broadcast remove tx")
 	t.Logf("remove txid: %s", removeTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, removeTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 6: Verify all txids are on-chain and DAG state is correct.

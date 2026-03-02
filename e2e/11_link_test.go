@@ -37,8 +37,7 @@ import (
 //  3. SelfUpdate dir_b to add file's pubkey to its payload (hard link)
 //  4. Verify: file's compressed pubkey appears in both dir_a and dir_b payloads
 func TestHardLink(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -69,20 +68,12 @@ func TestHardLink(t *testing.T) {
 	t.Logf("dir_b key:  %s", dirBKey.Path)
 	t.Logf("file key:   %s", fileKey.Path)
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -102,7 +93,7 @@ func TestHardLink(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -142,7 +133,7 @@ func TestHardLink(t *testing.T) {
 	dirsTxIDStr, err := node.SendRawTransaction(ctx, dirsSignedHex)
 	require.NoError(t, err, "broadcast dirs batch tx")
 	t.Logf("dirs txid: %s (dir_a + dir_b)", dirsTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirsTxIDStr, 1), "wait for confirmation")
 
 	// dir_a's NodeUTXO is NodeOps[0], dir_b's is NodeOps[1].
 	dirANodeUTXO := dirsResult.NodeOps[0].NodeUTXO
@@ -183,7 +174,7 @@ func TestHardLink(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// Prepare change from file tx for the hard-link self-update.
 	fileChangeUTXO := fileResult.ChangeUTXO
@@ -212,7 +203,7 @@ func TestHardLink(t *testing.T) {
 		dirBUpdateTxIDStr, err := node.SendRawTransaction(ctx, dirBUpdateSignedHex)
 		require.NoError(t, err, "broadcast dir_b self-update tx")
 		t.Logf("dir_b hard-link update txid: %s", dirBUpdateTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, dirBUpdateTxIDStr, 1), "wait for confirmation")
 
 		// --- Verify dir_a payload still contains file's pubkey ---
 		// dir_a's OP_RETURN is at output 0 of the combined dirs tx.
@@ -286,8 +277,7 @@ func TestHardLink(t *testing.T) {
 //  3. Verify: link has its own P_node (different from file), link payload
 //     contains file's compressed pubkey as the target reference.
 func TestSoftLink(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -318,20 +308,12 @@ func TestSoftLink(t *testing.T) {
 	t.Logf("file key:   %s", fileKey.Path)
 	t.Logf("link key:   %s", linkKey.Path)
 
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -351,7 +333,7 @@ func TestSoftLink(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -390,7 +372,7 @@ func TestSoftLink(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare dir's NodeUTXO for file creation.
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
@@ -429,7 +411,7 @@ func TestSoftLink(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file+dir-refresh tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// Prepare change from file tx.
 	fileChangeUTXO := fileResult.ChangeUTXO
@@ -466,7 +448,7 @@ func TestSoftLink(t *testing.T) {
 	linkTxIDStr, err := node.SendRawTransaction(ctx, linkSignedHex)
 	require.NoError(t, err, "broadcast link tx")
 	t.Logf("link txid: %s", linkTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, linkTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 6: Verify soft link from chain.

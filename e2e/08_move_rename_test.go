@@ -31,8 +31,7 @@ import (
 // implicitly when its UTXO is consumed during file creation.
 // Rename = SelfUpdate dir_b with changed payload name.
 func TestMoveRename(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -71,21 +70,12 @@ func TestMoveRename(t *testing.T) {
 	t.Logf("file key:   %s", fileKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -105,7 +95,7 @@ func TestMoveRename(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -145,7 +135,7 @@ func TestMoveRename(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir_a + dir_b tx")
 	t.Logf("dir_a + dir_b txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	// dir_a = NodeOps[0], dir_b = NodeOps[1].
 	require.Len(t, dirResult.NodeOps, 2, "batch should have 2 node ops")
@@ -190,7 +180,7 @@ func TestMoveRename(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// Prepare change from file tx as next fee input.
 	fileChangeUTXO := fileResult.ChangeUTXO
@@ -223,7 +213,7 @@ func TestMoveRename(t *testing.T) {
 		dirBUpdateTxIDStr, err := node.SendRawTransaction(ctx, moveSignedHex)
 		require.NoError(t, err, "broadcast dir_b self-update tx")
 		t.Logf("dir_b updated (file added) txid: %s", dirBUpdateTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, dirBUpdateTxIDStr, 1), "wait for confirmation")
 
 		// --- Verify dir_b now references file ---
 		rawDirB, err := node.GetRawTransaction(ctx, dirBUpdateTxIDStr)
@@ -281,7 +271,7 @@ func TestMoveRename(t *testing.T) {
 		dirBRenameTxIDStr, err := node.SendRawTransaction(ctx, dirBRenameSignedHex)
 		require.NoError(t, err, "broadcast dir_b rename tx")
 		t.Logf("dir_b renamed txid: %s", dirBRenameTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, dirBRenameTxIDStr, 1), "wait for confirmation")
 
 		// --- Verify renamed payload from chain ---
 		rawRenamed, err := node.GetRawTransaction(ctx, dirBRenameTxIDStr)

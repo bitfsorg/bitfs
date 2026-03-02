@@ -26,8 +26,7 @@ import (
 //  5. Verify the resulting node state has Access="paid" and correct PricePerKB.
 //  6. Verify a signed SelfUpdate transaction was produced.
 func TestSetPriceOnFile(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	eng, dataDir := testutil.SetupTestEngine(t)
 	testutil.FundEngineWallet(t, eng, node)
@@ -133,8 +132,7 @@ func TestSetPriceOnFile(t *testing.T) {
 //   - A fee UTXO for transaction fees
 //   - Valid key derivation from the engine wallet
 func TestPriceInNodeState(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	eng, _ := testutil.SetupTestEngine(t)
 	testutil.FundEngineWallet(t, eng, node)

@@ -31,8 +31,7 @@ import (
 //  1. Create root -> dir -> original file + copy (in same batch, both Free encrypted)
 //  2. Verify: different P_node, different vout, same decrypted plaintext
 func TestCopyFile(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -64,21 +63,12 @@ func TestCopyFile(t *testing.T) {
 	t.Logf("copy key:     %s", copyKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -98,7 +88,7 @@ func TestCopyFile(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -133,7 +123,7 @@ func TestCopyFile(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare dir's NodeUTXO for spending as parent edge.
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
@@ -195,7 +185,7 @@ func TestCopyFile(t *testing.T) {
 	filesTxIDStr, err := node.SendRawTransaction(ctx, filesSignedHex)
 	require.NoError(t, err, "broadcast original + copy tx")
 	t.Logf("original + copy txid: %s", filesTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, filesTxIDStr, 1), "wait for confirmation")
 
 	// original = NodeOps[0], copy = NodeOps[1].
 	require.Len(t, filesResult.NodeOps, 2, "batch should have 2 node ops")
@@ -308,8 +298,7 @@ func TestCopyFile(t *testing.T) {
 //	      +-- original (file, Free encrypted, then self-updated)
 //	      +-- copy     (file, Free encrypted, should retain original content)
 func TestCopyIndependence(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -341,19 +330,10 @@ func TestCopyIndependence(t *testing.T) {
 	t.Logf("copy key:     %s", copyKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -373,7 +353,7 @@ func TestCopyIndependence(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
 	rootNodeUTXOScript, err := tx.BuildP2PKHScript(rootKey.PublicKey)
@@ -406,7 +386,7 @@ func TestCopyIndependence(t *testing.T) {
 	dirTxIDStr, err := node.SendRawTransaction(ctx, dirSignedHex)
 	require.NoError(t, err, "broadcast dir tx")
 	t.Logf("dir txid: %s", dirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, dirTxIDStr, 1), "wait for confirmation")
 
 	dirNodeUTXO := dirResult.NodeOps[0].NodeUTXO
 	dirNodeUTXOScript, err := tx.BuildP2PKHScript(dirKey.PublicKey)
@@ -456,7 +436,7 @@ func TestCopyIndependence(t *testing.T) {
 	filesTxIDStr, err := node.SendRawTransaction(ctx, filesSignedHex)
 	require.NoError(t, err, "broadcast original + copy tx")
 	t.Logf("original + copy txid: %s", filesTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, filesTxIDStr, 1), "wait for confirmation")
 
 	// original = NodeOps[0], copy = NodeOps[1].
 	require.Len(t, filesResult.NodeOps, 2, "batch should have 2 node ops")
@@ -502,7 +482,7 @@ func TestCopyIndependence(t *testing.T) {
 	updateTxIDStr, err := node.SendRawTransaction(ctx, updateSignedHex)
 	require.NoError(t, err, "broadcast self-update tx")
 	t.Logf("self-update txid: %s", updateTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, updateTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 6: Verify copy still has original content (independence).
