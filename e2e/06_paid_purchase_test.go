@@ -180,7 +180,8 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	fileSize := uint64(len(originalContent))
 	sellerAddr := sellerFeeAddr.AddressString
 
-	invoice := x402.NewInvoice(pricePerKB, fileSize, sellerAddr, capsuleHash, 3600)
+	invoice, err := x402.NewInvoice(pricePerKB, fileSize, sellerAddr, capsuleHash, 3600)
+	require.NoError(t, err, "create invoice")
 	require.NotEmpty(t, invoice.ID, "invoice should have an ID")
 	require.False(t, invoice.IsExpired(), "invoice should not be expired")
 
@@ -606,7 +607,8 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	// ------------------------------------------------------------------
 	// 6. Verify x402 invoice creation.
 	// ------------------------------------------------------------------
-	inv := x402.NewInvoice(50, uint64(len(plaintext)), "1SellerAddr", capsuleHash, 300)
+	inv, invErr := x402.NewInvoice(50, uint64(len(plaintext)), "1SellerAddr", capsuleHash, 300)
+	require.NoError(t, invErr, "create invoice")
 	assert.Equal(t, x402.CalculatePrice(50, uint64(len(plaintext))), inv.Price)
 	assert.Equal(t, capsuleHash, inv.CapsuleHash)
 	assert.False(t, inv.IsExpired())
