@@ -28,8 +28,7 @@ import (
 //  7. Call spv.VerifyTransaction — should pass
 //  8. Tamper with the proof (flip a byte) — should fail
 func TestSPVVerify_RegtestMerkleProof(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -52,9 +51,8 @@ func TestSPVVerify_RegtestMerkleProof(t *testing.T) {
 	require.NoError(t, err, "send to address")
 	t.Logf("funding txid: %s", txid)
 
-	// Mine 1 more block to confirm the tx.
-	_, err = node.MineBlocks(ctx, 1, addr)
-	require.NoError(t, err, "mine confirmation block")
+	// Confirm the tx.
+	require.NoError(t, node.WaitForConfirmation(ctx, txid, 1), "wait for confirmation")
 
 	// ---------------------------------------------------------------
 	// Step 2: Get the raw transaction
@@ -174,8 +172,7 @@ func TestSPVVerify_RegtestMerkleProof(t *testing.T) {
 // and verifies it through the SPV pipeline. This serves as a cross-check
 // for the BIP37 parsing approach.
 func TestSPVVerify_ManualMerkleBranch(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -193,11 +190,14 @@ func TestSPVVerify_ManualMerkleBranch(t *testing.T) {
 	txid, err := node.SendToAddress(ctx, addr2, 0.5)
 	require.NoError(t, err)
 
-	blockHashes, err := node.MineBlocks(ctx, 1, addr)
-	require.NoError(t, err)
-	require.NotEmpty(t, blockHashes)
+	require.NoError(t, node.WaitForConfirmation(ctx, txid, 1), "wait for confirmation")
 
-	blockHash := blockHashes[0]
+	// Get the block hash containing our tx via verbose getrawtransaction.
+	var txInfo map[string]interface{}
+	err = node.RPC().Call(ctx, "getrawtransaction", []interface{}{txid, true}, &txInfo)
+	require.NoError(t, err, "getrawtransaction verbose")
+	blockHash, ok := txInfo["blockhash"].(string)
+	require.True(t, ok, "tx should have blockhash after confirmation")
 
 	// Get the raw transaction.
 	rawTx, err := node.GetRawTransaction(ctx, txid)
@@ -206,7 +206,7 @@ func TestSPVVerify_ManualMerkleBranch(t *testing.T) {
 
 	// Get block info to find all transaction IDs.
 	var blockInfo map[string]interface{}
-	err = callRPC(node, ctx, "getblock", []interface{}{blockHash, 1}, &blockInfo)
+	err = node.RPC().Call(ctx, "getblock", []interface{}{blockHash, 1}, &blockInfo)
 	require.NoError(t, err)
 
 	txListRaw, ok := blockInfo["tx"].([]interface{})
@@ -295,14 +295,6 @@ func reverseBytesCopy(b []byte) []byte {
 		c[len(b)-1-i] = v
 	}
 	return c
-}
-
-// callRPC is a helper that uses the unexported rpc field on RegtestNode.
-// Since we cannot access the private rpc field, we create a separate RPCClient.
-func callRPC(node *testutil.RegtestNode, ctx context.Context, method string, params []interface{}, result interface{}) error {
-	// We recreate a client with the same default credentials.
-	client := testutil.NewRPCClient("http://localhost:18332", "bitfs", "bitfs")
-	return client.Call(ctx, method, params, result)
 }
 
 // buildMerkleBranch manually constructs a Merkle branch (proof nodes) for the

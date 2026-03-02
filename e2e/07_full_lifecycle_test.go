@@ -26,8 +26,7 @@ import (
 // read back -> self-update -> read updated -> change to Paid -> purchase flow ->
 // delete (new dir version) -> verify final DAG state.
 func TestFullLifecycle(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
@@ -61,21 +60,12 @@ func TestFullLifecycle(t *testing.T) {
 	t.Logf("file key:      %s", fileKey.Path)
 
 	// Fund the fee key address.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 2: Create root directory.
@@ -95,7 +85,7 @@ func TestFullLifecycle(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root's NodeUTXO for spending as parent edge.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -130,7 +120,7 @@ func TestFullLifecycle(t *testing.T) {
 	childDirTxIDStr, err := node.SendRawTransaction(ctx, childDirSignedHex)
 	require.NoError(t, err, "broadcast child dir tx")
 	t.Logf("child dir txid: %s", childDirTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, childDirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare child dir's NodeUTXO for spending as parent edge in step 4.
 	childDirNodeUTXO := childDirResult.NodeOps[0].NodeUTXO
@@ -182,7 +172,7 @@ func TestFullLifecycle(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("file txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 5: Read back -- retrieve from chain, parse OP_RETURN, decrypt.
@@ -269,7 +259,7 @@ func TestFullLifecycle(t *testing.T) {
 	updateTxIDStr, err := node.SendRawTransaction(ctx, updateSignedHex)
 	require.NoError(t, err, "broadcast self-update tx")
 	t.Logf("self-update txid: %s", updateTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, updateTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 7: Read updated version -- verify new content.
@@ -452,7 +442,7 @@ func TestFullLifecycle(t *testing.T) {
 		deleteTxIDStr, err := node.SendRawTransaction(ctx, deleteSignedHex)
 		require.NoError(t, err, "broadcast delete-dir tx")
 		t.Logf("delete-dir txid: %s", deleteTxIDStr)
-		mineOneBlock(t)
+		require.NoError(t, node.WaitForConfirmation(ctx, deleteTxIDStr, 1), "wait for confirmation")
 
 		// Retrieve the new directory version from chain.
 		rawBytes, err := node.GetRawTransaction(ctx, deleteTxIDStr)

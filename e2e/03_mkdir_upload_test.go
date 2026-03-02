@@ -30,8 +30,7 @@ import (
 // on-chain, the test retrieves each, parses the OP_RETURN, and verifies the
 // ParentTxID links form a valid DAG: root <- docs <- file.
 func TestMkdirUpload(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -65,21 +64,12 @@ func TestMkdirUpload(t *testing.T) {
 	// ==================================================================
 	// Step 2: Fund the fee key address.
 	// ==================================================================
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 
 	feeUTXO := getFundedUTXO(t, ctx, node, feeAddr.AddressString, feeKey)
 	t.Logf("fee UTXO: txid=%x, vout=%d, amount=%d sat",
 		feeUTXO.TxID, feeUTXO.Vout, feeUTXO.Amount)
-
-	// Helper: mine one block for confirmation.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// ==================================================================
 	// Step 3: Build, sign, broadcast ROOT directory tx.
@@ -102,7 +92,7 @@ func TestMkdirUpload(t *testing.T) {
 	require.NoError(t, err, "broadcast root tx")
 	t.Logf("root txid: %s", rootTxIDStr)
 
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare the root's NodeUTXO for spending as the parent edge in step 4.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -142,7 +132,7 @@ func TestMkdirUpload(t *testing.T) {
 	require.NoError(t, err, "broadcast child dir tx")
 	t.Logf("child dir txid: %s", childDirTxIDStr)
 
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, childDirTxIDStr, 1), "wait for confirmation")
 
 	// Prepare child dir's NodeUTXO for spending as parent edge in step 5.
 	childDirNodeUTXO := childDirResult.NodeOps[0].NodeUTXO
@@ -194,7 +184,7 @@ func TestMkdirUpload(t *testing.T) {
 	require.NoError(t, err, "broadcast file tx")
 	t.Logf("file txid: %s", fileTxIDStr)
 
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 7: Retrieve all three txs from chain and parse OP_RETURN.
@@ -390,7 +380,8 @@ func TestMkdirUpload_ChildTxStructure(t *testing.T) {
 	require.NoError(t, err)
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err)
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	cfg := testutil.LoadConfig()
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(cfg.Network))
 	require.NoError(t, err)
 
 	feeKey, err := w.DeriveFeeKey(wallet.ExternalChain, 0)

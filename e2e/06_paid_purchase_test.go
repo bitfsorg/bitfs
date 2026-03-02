@@ -37,8 +37,7 @@ import (
 // The HTLC claim tx is constructed in-memory (no BuildClaimTx exists yet)
 // and tested via ParseHTLCPreimage extraction.
 func TestPaidPurchaseFlow(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -71,18 +70,10 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	// ==================================================================
 	// Step 2: Fund the seller fee address, build root + file node on-chain.
 	// ==================================================================
-	sellerFeeAddr, err := script.NewAddressFromPublicKey(sellerFeeKey.PublicKey, false)
+	sellerFeeAddr, err := script.NewAddressFromPublicKey(sellerFeeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "seller fee address")
 
 	sellerFeeUTXO := getFundedUTXO(t, ctx, node, sellerFeeAddr.AddressString, sellerFeeKey)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	mineOneBlock := func(t *testing.T) {
-		t.Helper()
-		_, err := node.MineBlocks(ctx, 1, mineAddr)
-		require.NoError(t, err, "mine confirmation block")
-	}
 
 	// Build and broadcast root directory tx.
 	rootPayload := []byte("bitfs seller root")
@@ -100,7 +91,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	rootTxIDStr, err := node.SendRawTransaction(ctx, rootSignedHex)
 	require.NoError(t, err, "broadcast seller root tx")
 	t.Logf("seller root txid: %s", rootTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, rootTxIDStr, 1), "wait for confirmation")
 
 	// Prepare root node UTXO and change UTXO for child tx.
 	rootNodeUTXO := rootResult.NodeOps[0].NodeUTXO
@@ -157,7 +148,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	fileTxIDStr, err := node.SendRawTransaction(ctx, fileSignedHex)
 	require.NoError(t, err, "broadcast file node tx")
 	t.Logf("file node txid: %s", fileTxIDStr)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, fileTxIDStr, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 5: Buyer requests purchase -- seller computes capsule.
@@ -276,7 +267,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	// ==================================================================
 	// Step 8: Fund buyer and build HTLC funding tx using BuildHTLCFundingTx.
 	// ==================================================================
-	buyerFeeAddr, err := script.NewAddressFromPublicKey(buyerFeeKey.PublicKey, false)
+	buyerFeeAddr, err := script.NewAddressFromPublicKey(buyerFeeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "buyer fee address")
 
 	buyerUTXO := getFundedUTXO(t, ctx, node, buyerFeeAddr.AddressString, buyerFeeKey)
@@ -307,7 +298,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	htlcPaymentTxID, err := node.SendRawTransaction(ctx, hex.EncodeToString(fundingResult.RawTx))
 	require.NoError(t, err, "broadcast HTLC funding tx")
 	t.Logf("HTLC payment txid: %s", htlcPaymentTxID)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, htlcPaymentTxID, 1), "wait for confirmation")
 
 	// Retrieve from chain to confirm it was accepted.
 	htlcRawBytes, err := node.GetRawTransaction(ctx, htlcPaymentTxID)
@@ -334,7 +325,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	claimTxID, err := node.SendRawTransaction(ctx, claimTxHex)
 	require.NoError(t, err, "broadcast seller claim tx")
 	t.Logf("seller claim txid: %s", claimTxID)
-	mineOneBlock(t)
+	require.NoError(t, node.WaitForConfirmation(ctx, claimTxID, 1), "wait for confirmation")
 
 	// ==================================================================
 	// Step 10: Buyer extracts capsule from seller's claim tx.
@@ -626,8 +617,7 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 // TestPaidPurchase_BuyerRefund tests the buyer refund path on regtest.
 // It builds an HTLC funding tx, mines past the timeout, then spends via refund.
 func TestPaidPurchase_BuyerRefund(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
@@ -642,7 +632,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fund buyer.
-	buyerFeeAddr, err := script.NewAddressFromPublicKey(buyerFeeKey.PublicKey, false)
+	buyerFeeAddr, err := script.NewAddressFromPublicKey(buyerFeeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err)
 	buyerUTXO := getFundedUTXO(t, ctx, node, buyerFeeAddr.AddressString, buyerFeeKey)
 
@@ -650,9 +640,6 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	sellerPubKeyCompressed := sellerFeeKey.PublicKey.Compressed()
 	buyerPKH := buyerFeeKey.PublicKey.Hash()
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
-
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err)
 
 	// Use a very short timeout (current block height + 1) so we can refund quickly.
 	blockCount, err := node.GetBlockCount(ctx)
@@ -708,8 +695,9 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	require.NoError(t, err, "buyer counter-sign refund tx")
 
 	// Mine past the timeout so the nLockTime refund becomes valid.
-	_, err = node.MineBlocks(ctx, 2, mineAddr)
-	require.NoError(t, err)
+	// WaitForConfirmation with minConf=2 mines 2 blocks on regtest,
+	// advancing past the timeout (blockCount + 1).
+	require.NoError(t, node.WaitForConfirmation(ctx, htlcTxID, 2), "wait for confirmation")
 
 	// Broadcast the fully-signed refund tx.
 	refundTxHex := hex.EncodeToString(refundTx.Bytes())
@@ -717,9 +705,8 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	require.NoError(t, err, "broadcast buyer refund tx")
 	t.Logf("buyer refund txid: %s", refundTxID)
 
-	// Mine to confirm.
-	_, err = node.MineBlocks(ctx, 1, mineAddr)
-	require.NoError(t, err)
+	// Confirm the refund tx.
+	require.NoError(t, node.WaitForConfirmation(ctx, refundTxID, 1), "wait for confirmation")
 
 	// Verify refund was confirmed.
 	refundRaw, err := node.GetRawTransaction(ctx, refundTxID)
