@@ -17,15 +17,50 @@ const (
 	defaultRPCPass = "bitfs"
 )
 
-// RegtestUTXO represents an unspent transaction output from the regtest node.
-type RegtestUTXO struct {
-	TxID          string  `json:"txid"`
-	Vout          uint32  `json:"vout"`
-	Address       string  `json:"address"`
-	ScriptPubKey  string  `json:"scriptPubKey"`
-	Amount        float64 `json:"amount"`
-	Confirmations int     `json:"confirmations"`
+// RegtestUTXO is a backward-compatible alias for UTXO.
+// Deprecated: Use UTXO directly. Will be removed in a future cleanup.
+type RegtestUTXO = UTXO
+
+// TestNode is the unified interface for interacting with a BSV node across
+// regtest, testnet, and mainnet networks. All e2e test helpers should accept
+// TestNode rather than a concrete type.
+type TestNode interface {
+	// Network returns the network name: "regtest", "testnet", or "mainnet".
+	Network() string
+	// IsAvailable returns true if the node is reachable and responding.
+	IsAvailable(ctx context.Context) bool
+	// Fund sends the specified amount to addr and waits for confirmation.
+	// On regtest it mines blocks; on live networks it uses faucet/WIF wallet.
+	Fund(ctx context.Context, addr string, amount float64) (*UTXO, error)
+	// WaitForConfirmation waits until the given txid has at least minConf confirmations.
+	// On regtest it mines blocks; on live networks it polls.
+	WaitForConfirmation(ctx context.Context, txid string, minConf int) error
+
+	// --- RPC pass-through methods ---
+
+	SendRawTransaction(ctx context.Context, hex string) (string, error)
+	GetRawTransaction(ctx context.Context, txid string) ([]byte, error)
+	GetTxOutProof(ctx context.Context, txid string) ([]byte, error)
+	GetBlockHeader(ctx context.Context, hash string) ([]byte, error)
+	GetBlockHeaderVerbose(ctx context.Context, hash string) (map[string]interface{}, error)
+	GetBestBlockHash(ctx context.Context) (string, error)
+	GetBlockHash(ctx context.Context, height int) (string, error)
+	GetBlockCount(ctx context.Context) (int64, error)
+	ImportAddress(ctx context.Context, addr string) error
+	ListUnspent(ctx context.Context, addr string) ([]UTXO, error)
+	SendToAddress(ctx context.Context, addr string, amount float64) (string, error)
+	NewAddress(ctx context.Context) (string, error)
+
+	// MineBlocks mines count blocks sending rewards to addr.
+	// Only supported on regtest; returns an error on live networks.
+	MineBlocks(ctx context.Context, count int, addr string) ([]string, error)
+
+	// RPC returns the underlying RPCClient for direct RPC calls.
+	RPC() *RPCClient
 }
+
+// Compile-time interface check.
+var _ TestNode = (*RegtestNode)(nil)
 
 // RegtestNode provides high-level helpers around a BSV regtest JSON-RPC node.
 type RegtestNode struct {
@@ -40,6 +75,44 @@ func NewRegtestNode() *RegtestNode {
 	}
 }
 
+// NewTestNode creates a TestNode appropriate for the configured network.
+// It loads config from environment variables, selects regtest or live node,
+// and skips the test if the node is not available.
+func NewTestNode(t *testing.T) TestNode {
+	t.Helper()
+	cfg := LoadConfig()
+	rpc := NewRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPass)
+
+	var node TestNode
+	switch cfg.Network {
+	case "testnet", "mainnet":
+		node = newLiveNode(rpc, cfg)
+	default:
+		node = &RegtestNode{rpc: rpc}
+	}
+
+	if !node.IsAvailable(context.Background()) {
+		t.Skipf("BSV %s node not available at %s", cfg.Network, cfg.RPCURL)
+	}
+	return node
+}
+
+// SkipIfUnavailable skips the current test if the regtest node is not reachable.
+func SkipIfUnavailable(t *testing.T, node *RegtestNode) {
+	t.Helper()
+	if !node.IsAvailable(context.Background()) {
+		t.Skip("BSV regtest node not available (start with: docker compose -f e2e/docker-compose.yml up -d)")
+	}
+}
+
+// --- TestNode interface implementation for RegtestNode ---
+
+// Network returns "regtest".
+func (n *RegtestNode) Network() string { return "regtest" }
+
+// RPC returns the underlying RPCClient.
+func (n *RegtestNode) RPC() *RPCClient { return n.rpc }
+
 // IsAvailable returns true if the regtest node is reachable and responding.
 func (n *RegtestNode) IsAvailable(ctx context.Context) bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -50,13 +123,44 @@ func (n *RegtestNode) IsAvailable(ctx context.Context) bool {
 	return err == nil && hash != ""
 }
 
-// SkipIfUnavailable skips the current test if the regtest node is not reachable.
-func SkipIfUnavailable(t *testing.T, node *RegtestNode) {
-	t.Helper()
-	if !node.IsAvailable(context.Background()) {
-		t.Skip("BSV regtest node not available (start with: docker compose -f e2e/docker-compose.yml up -d)")
+// Fund sends the specified amount to addr and returns a confirmed UTXO.
+// On regtest, it mines 101 blocks (to make coinbase spendable), sends the
+// amount, then mines 1 confirmation block.
+func (n *RegtestNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO, error) {
+	miningAddr, err := n.NewAddress(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("generate mining address: %w", err)
 	}
+	if _, err := n.MineBlocks(ctx, 101, miningAddr); err != nil {
+		return nil, fmt.Errorf("mine 101 blocks: %w", err)
+	}
+	if _, err := n.SendToAddress(ctx, addr, amount); err != nil {
+		return nil, fmt.Errorf("send to address: %w", err)
+	}
+	if _, err := n.MineBlocks(ctx, 1, miningAddr); err != nil {
+		return nil, fmt.Errorf("mine confirmation: %w", err)
+	}
+	utxos, err := n.ListUnspent(ctx, addr)
+	if err != nil {
+		return nil, fmt.Errorf("list unspent: %w", err)
+	}
+	if len(utxos) == 0 {
+		return nil, fmt.Errorf("no UTXOs found for %s", addr)
+	}
+	return &utxos[0], nil
 }
+
+// WaitForConfirmation on regtest simply mines the required number of blocks.
+func (n *RegtestNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	addr, err := n.NewAddress(ctx)
+	if err != nil {
+		return fmt.Errorf("generate mining address: %w", err)
+	}
+	_, err = n.MineBlocks(ctx, minConf, addr)
+	return err
+}
+
+// --- RPC pass-through methods ---
 
 // NewAddress generates a new address from the node's wallet.
 func (n *RegtestNode) NewAddress(ctx context.Context) (string, error) {
@@ -80,8 +184,8 @@ func (n *RegtestNode) MineBlocks(ctx context.Context, count int, addr string) ([
 
 // ListUnspent returns the unspent outputs for the given address.
 // The address must be known to the node's wallet (imported or generated).
-func (n *RegtestNode) ListUnspent(ctx context.Context, addr string) ([]RegtestUTXO, error) {
-	var utxos []RegtestUTXO
+func (n *RegtestNode) ListUnspent(ctx context.Context, addr string) ([]UTXO, error) {
+	var utxos []UTXO
 	// listunspent minconf=1 maxconf=9999999 [addresses]
 	params := []interface{}{1, 9999999, []string{addr}}
 	if err := n.rpc.Call(ctx, "listunspent", params, &utxos); err != nil {
@@ -130,7 +234,7 @@ func (n *RegtestNode) GetRawTransaction(ctx context.Context, txid string) ([]byt
 // GetBlockHeader returns the raw 80-byte block header for the given block hash.
 func (n *RegtestNode) GetBlockHeader(ctx context.Context, blockHash string) ([]byte, error) {
 	var headerHex string
-	// getblockheader hash verbose=false → returns hex string of 80-byte header
+	// getblockheader hash verbose=false -> returns hex string of 80-byte header
 	params := []interface{}{blockHash, false}
 	if err := n.rpc.Call(ctx, "getblockheader", params, &headerHex); err != nil {
 		return nil, fmt.Errorf("getblockheader(%s): %w", blockHash, err)
@@ -211,7 +315,9 @@ func (n *RegtestNode) ImportAddress(ctx context.Context, addr string) error {
 // mines 101 blocks to it (making the coinbase spendable), and then returns
 // the first available UTXO. This is the typical setup for e2e tests that need
 // funded outputs.
-func (n *RegtestNode) FundAddress(ctx context.Context, addr string) (*RegtestUTXO, error) {
+//
+// Deprecated: Use Fund() instead, which works across all networks.
+func (n *RegtestNode) FundAddress(ctx context.Context, addr string) (*UTXO, error) {
 	// Mine 101 blocks to make coinbase maturable (100 confirmations required).
 	_, err := n.MineBlocks(ctx, 101, addr)
 	if err != nil {
