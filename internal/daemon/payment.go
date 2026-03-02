@@ -16,7 +16,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // invoiceSnapshot holds a read-only snapshot of InvoiceRecord fields,
@@ -81,7 +81,7 @@ const (
 
 // servePaidContent returns 402 Payment Required for paid content,
 // generating and storing an invoice for the purchase flow.
-// Uses libbitfs/x402 for invoice creation, price calculation, and HTTP headers.
+// Uses libbitfs/payment for invoice creation, price calculation, and HTTP headers.
 //
 // Capsule computation is deferred to handleGetBuyInfo, where the buyer
 // provides their public key. This is required because the capsule is
@@ -108,13 +108,13 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 	}
 
 	// Create invoice without capsule hash (deferred until buyer identifies themselves).
-	inv, err := x402.NewInvoice(node.PricePerKB, node.FileSize, paymentAddr, nil, ttlSeconds)
+	inv, err := payment.NewInvoice(node.PricePerKB, node.FileSize, paymentAddr, nil, ttlSeconds)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "INVOICE_CREATE_FAILED", "Failed to create invoice")
 		return
 	}
 
-	// Convert x402.Invoice to daemon's InvoiceRecord for internal state management.
+	// Convert payment.Invoice to daemon's InvoiceRecord for internal state management.
 	sellerPubKeyHex := hex.EncodeToString(sellerPriv.PubKey().Compressed())
 	record := &InvoiceRecord{
 		ID:           inv.ID,
@@ -153,9 +153,9 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 	d.invoices[inv.ID] = record
 	d.invoicesMu.Unlock()
 
-	// Set x402 HTTP headers and return 402 status via libbitfs/x402.
+	// Set payment HTTP headers and return 402 status via libbitfs/payment.
 	w.Header().Set("Content-Type", "application/json")
-	x402.SetPaymentHeaders(w, x402.PaymentHeadersFromInvoice(inv))
+	payment.SetPaymentHeaders(w, payment.PaymentHeadersFromInvoice(inv))
 
 	// Return JSON body with invoice details.
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -286,13 +286,13 @@ func (d *Daemon) computeInvoiceCapsule(invoice *InvoiceRecord, buyerPubHex strin
 		return fmt.Errorf("get seller key pair: %w", err)
 	}
 	sellerPKH := sellerPriv.PubKey().Hash()
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPubBytes,
 		SellerPubKey: sellerPriv.PubKey().Compressed(),
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.TotalPrice,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 		InvoiceID:    invoiceIDBytes,
 	})
 	if err != nil {
@@ -385,7 +385,7 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// HTLC path: verify the funding tx has a matching HTLC output.
-	if _, err := x402.VerifyHTLCFunding(htlcBody, snap.HTLCScript, snap.TotalPrice); err != nil {
+	if _, err := payment.VerifyHTLCFunding(htlcBody, snap.HTLCScript, snap.TotalPrice); err != nil {
 		rollbackPaid()
 		log.Printf("[buy] ERROR: HTLC verification failed for invoice %s: %v", snap.ID, err)
 		writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID",
@@ -470,7 +470,7 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePayInvoice handles POST /_bitfs/pay/{invoice_id}.
-// Accepts x402 bandwidth payment for a previously issued invoice.
+// Accepts bandwidth payment for a previously issued invoice.
 // Body must contain a raw transaction hex (JSON or plain) for verification.
 func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 	invoiceID := r.PathValue("invoice_id")
@@ -555,14 +555,14 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify P2PKH payment to seller address using snapshotted values.
-	proof := &x402.PaymentProof{RawTx: rawTx}
-	x402Inv := &x402.Invoice{
+	proof := &payment.PaymentProof{RawTx: rawTx}
+	x402Inv := &payment.Invoice{
 		ID:          paySnap.ID,
 		Price:       paySnap.TotalPrice,
 		PaymentAddr: paySnap.PaymentAddr,
 		Expiry:      paySnap.Expiry.Unix(),
 	}
-	if _, err := x402.VerifyPayment(proof, x402Inv); err != nil {
+	if _, err := payment.VerifyPayment(proof, x402Inv); err != nil {
 		rollbackPaid()
 		log.Printf("[pay] ERROR: payment verification failed for invoice %s: %v", paySnap.ID, err)
 		writeJSONError(w, http.StatusBadRequest, "VERIFICATION_FAILED", "Payment verification failed")

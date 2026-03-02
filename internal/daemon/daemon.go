@@ -1,7 +1,7 @@
 // Package daemon implements the BitFS LFCP (Local Full-Copy Peer) HTTP server.
 //
 // It serves content retrieval, Metanet metadata queries, Method 42 ECDH handshake
-// for identity verification, x402 payment handling for paid content, and content
+// for identity verification, payment handling for paid content, and content
 // negotiation for different client types (HTML, Markdown, JSON).
 package daemon
 
@@ -127,7 +127,7 @@ type TLSConfig struct {
 	KeyFile  string `toml:"key"`
 }
 
-// X402Config holds x402 payment configuration.
+// X402Config holds payment configuration.
 type X402Config struct {
 	Enabled       bool   `toml:"enabled"`
 	PricePerMB    uint64 `toml:"price_per_mb"`

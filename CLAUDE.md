@@ -11,7 +11,7 @@ Core concepts:
 - **Method 42**: Deterministic per-file ECDH encryption (all data encrypted by default), key formula: `aes_key = HKDF-SHA256(ECDH(D_node, P_node).x, key_hash)`
 - **SPV mode**: Local tx + Merkle proof, never queries blockchain
 - **HTLC atomic swap**: Trustless buy/sell via hash time-locked contracts
-- **x402 payment**: HTTP 402-based content payment protocol
+- **Payment protocol**: HTTP 402-based content payment protocol
 - **Metanet Chain**: Decentralized CDN network — separate product (see `../metanet/`)
 
 ## Build & Test

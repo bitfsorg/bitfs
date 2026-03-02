@@ -217,8 +217,8 @@ func TestContentNegDeepPath(t *testing.T) {
 	})
 }
 
-// TestContentNegPaidFile402 verifies that accessing a paid file with x402
-// enabled returns 402 Payment Required with appropriate x402 headers.
+// TestContentNegPaidFile402 verifies that accessing a paid file with payment
+// enabled returns 402 Payment Required with appropriate payment headers.
 func TestContentNegPaidFile402(t *testing.T) {
 	// Generate a valid public key for the paid file node.
 	privKey, err := ec.NewPrivateKey()
@@ -259,7 +259,7 @@ func TestContentNegPaidFile402(t *testing.T) {
 		assert.Equal(t, http.StatusPaymentRequired, resp.StatusCode,
 			"paid file should return 402 regardless of Accept header")
 
-		// Verify x402 headers are present.
+		// Verify payment headers are present.
 		assert.NotEmpty(t, resp.Header.Get("X-Price"), "X-Price header should be set")
 		assert.NotEmpty(t, resp.Header.Get("X-Price-Per-KB"), "X-Price-Per-KB header should be set")
 		assert.NotEmpty(t, resp.Header.Get("X-File-Size"), "X-File-Size header should be set")
@@ -309,7 +309,7 @@ func TestContentNegPaidFile402(t *testing.T) {
 			"paid file should return 402 even without Accept header")
 	})
 
-	// Sub-test: x402 disabled should NOT return 402 (falls through to content negotiation).
+	// Sub-test: payment disabled should NOT return 402 (falls through to content negotiation).
 	t.Run("x402_disabled_serves_normally", func(t *testing.T) {
 		serverNoX402 := setupContentNegDaemon(t, nodes, false)
 
@@ -321,9 +321,9 @@ func TestContentNegPaidFile402(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
-		// When x402 is disabled, paid files are served normally via content negotiation.
+		// When payment is disabled, paid files are served normally via content negotiation.
 		assert.Equal(t, http.StatusOK, resp.StatusCode,
-			"with x402 disabled, paid file should serve normally")
+			"with payment disabled, paid file should serve normally")
 		assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
 		var nodeInfo daemon.NodeInfo
@@ -331,7 +331,7 @@ func TestContentNegPaidFile402(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "file", nodeInfo.Type)
 		assert.Equal(t, "paid", nodeInfo.Access)
-		t.Logf("x402 disabled: served normally with access=%s", nodeInfo.Access)
+		t.Logf("payment disabled: served normally with access=%s", nodeInfo.Access)
 	})
 }
 

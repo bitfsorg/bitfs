@@ -16,7 +16,7 @@ import (
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/network"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // testCapsuleHash computes the correct capsule hash for test data.
@@ -222,7 +222,7 @@ func TestBuy_SubmitHTLCError(t *testing.T) {
 		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000, ScriptPubKey: p2pkh},
 			},
 		},
@@ -262,7 +262,7 @@ func TestBuy_SuccessFlow(t *testing.T) {
 		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000, ScriptPubKey: p2pkh},
 			},
 		},
@@ -303,7 +303,7 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000, ScriptPubKey: p2pkh},
 			},
 		},
@@ -338,7 +338,7 @@ func TestBuy_InvalidCapsuleHexInResponse(t *testing.T) {
 		TxID:   strings.Repeat("de", 32),
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000, ScriptPubKey: p2pkh},
 			},
 		},
@@ -377,7 +377,7 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 		TxID:   txID,
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000, ScriptPubKey: p2pkh},
 			},
 		},
@@ -393,7 +393,7 @@ func TestResolveUTXOs_ManualSufficient(t *testing.T) {
 	utxos, err := resolveUTXOs(&BuyParams{
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000},
 			},
 		},
@@ -407,7 +407,7 @@ func TestResolveUTXOs_ManualInsufficient(t *testing.T) {
 	_, err := resolveUTXOs(&BuyParams{
 		Config: &BuyerConfig{
 			PrivKey: pk,
-			ManualUTXOs: []*x402.HTLCUTXO{
+			ManualUTXOs: []*payment.HTLCUTXO{
 				{TxID: make([]byte, 32), Vout: 0, Amount: 10},
 			},
 		},

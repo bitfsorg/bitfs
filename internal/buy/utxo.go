@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/bitfsorg/libbitfs-go/network"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // ErrInsufficientBalance is returned when available UTXOs cannot cover the
@@ -41,7 +41,7 @@ func EstimateHTLCFee(nInputs int, feeRate uint64) uint64 {
 // and selects the minimum set needed to cover amount + estimated fee using a
 // greedy largest-first algorithm. Returns HTLCUTXO slices ready for use in
 // HTLC funding transactions.
-func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address string, amount, feeRate uint64) ([]*x402.HTLCUTXO, error) {
+func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address string, amount, feeRate uint64) ([]*payment.HTLCUTXO, error) {
 	netUTXOs, err := svc.ListUnspent(ctx, address)
 	if err != nil {
 		return nil, fmt.Errorf("buyer: query UTXOs: %w", err)
@@ -52,7 +52,7 @@ func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address str
 		return netUTXOs[i].Amount > netUTXOs[j].Amount
 	})
 
-	var selected []*x402.HTLCUTXO
+	var selected []*payment.HTLCUTXO
 	var totalInput uint64
 
 	for _, u := range netUTXOs {
@@ -68,7 +68,7 @@ func SelectUTXOs(ctx context.Context, svc network.BlockchainService, address str
 			continue
 		}
 
-		selected = append(selected, &x402.HTLCUTXO{
+		selected = append(selected, &payment.HTLCUTXO{
 			TxID:         txid,
 			Vout:         u.Vout,
 			Amount:       u.Amount,

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // ErrNoBuyerConfig is returned when no wallet key is configured.
@@ -21,7 +21,7 @@ var ErrNoBuyerConfig = errors.New("buyer: no wallet key configured (set --wallet
 type BuyerConfig struct {
 	PrivKey     *ec.PrivateKey
 	Network     string           // mainnet|testnet|regtest
-	ManualUTXOs []*x402.HTLCUTXO // Manually specified UTXOs (from --utxo flag)
+	ManualUTXOs []*payment.HTLCUTXO // Manually specified UTXOs (from --utxo flag)
 }
 
 // LoadConfigOpts holds options for loading buyer config.
@@ -98,7 +98,7 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 		}
 		// Set ScriptPubKey to buyer's P2PKH.
 		utxo.ScriptPubKey = BuildP2PKHScript(privKey.PubKey().Hash())
-		cfg.ManualUTXOs = []*x402.HTLCUTXO{utxo}
+		cfg.ManualUTXOs = []*payment.HTLCUTXO{utxo}
 	}
 
 	return cfg, nil
@@ -151,7 +151,7 @@ func parsePrivateKey(hexStr string) (*ec.PrivateKey, error) {
 }
 
 // ParseUTXOFlag parses a UTXO from the --utxo flag (format: txid:vout:amount).
-func ParseUTXOFlag(s string) (*x402.HTLCUTXO, error) {
+func ParseUTXOFlag(s string) (*payment.HTLCUTXO, error) {
 	parts := strings.SplitN(s, ":", 3)
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("expected txid:vout:amount")
@@ -171,7 +171,7 @@ func ParseUTXOFlag(s string) (*x402.HTLCUTXO, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid amount: %w", err)
 	}
-	return &x402.HTLCUTXO{
+	return &payment.HTLCUTXO{
 		TxID:   txid,
 		Vout:   uint32(vout),
 		Amount: amount,

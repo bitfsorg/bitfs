@@ -19,7 +19,7 @@ import (
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // --- Mock wallet service for daemon ---
@@ -127,7 +127,7 @@ func createTestDaemon(t *testing.T) (*daemon.Daemon, *mockContentStore) {
 func TestX402InvoiceHeaderRoundTrip(t *testing.T) {
 	// 1. Create invoice with price, file size, capsule hash
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
-	invoice := x402.NewInvoice(100, 10240, "1BitFSAddress...", capsuleHash, 3600)
+	invoice := payment.NewInvoice(100, 10240, "1BitFSAddress...", capsuleHash, 3600)
 	require.NotNil(t, invoice)
 	assert.Greater(t, invoice.Price, uint64(0))
 	assert.Equal(t, uint64(100), invoice.PricePerKB)
@@ -135,20 +135,20 @@ func TestX402InvoiceHeaderRoundTrip(t *testing.T) {
 	assert.False(t, invoice.IsExpired())
 
 	// Verify price calculation: ceil(100 * 10240 / 1024) = 1000
-	expectedPrice := x402.CalculatePrice(100, 10240)
+	expectedPrice := payment.CalculatePrice(100, 10240)
 	assert.Equal(t, uint64(1000), expectedPrice)
 	assert.Equal(t, expectedPrice, invoice.Price)
 
 	// 2. Set payment headers on HTTP response
 	recorder := httptest.NewRecorder()
-	headers := x402.PaymentHeadersFromInvoice(invoice)
-	x402.SetPaymentHeaders(recorder, headers)
+	headers := payment.PaymentHeadersFromInvoice(invoice)
+	payment.SetPaymentHeaders(recorder, headers)
 
 	// 3. Parse headers from HTTP response
 	resp := recorder.Result()
 	assert.Equal(t, http.StatusPaymentRequired, resp.StatusCode)
 
-	parsedHeaders, err := x402.ParsePaymentHeaders(resp)
+	parsedHeaders, err := payment.ParsePaymentHeaders(resp)
 	require.NoError(t, err)
 
 	// 4. Verify all fields match
@@ -191,7 +191,7 @@ func TestHTLCScriptConstruction(t *testing.T) {
 
 	// 3. Build HTLC script
 	sellerPubKey := sellerKey.PublicKey.Compressed()
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerKey.PublicKey.Compressed(),
 		SellerPubKey: sellerPubKey,
 		SellerAddr:   sellerAddr,
@@ -234,7 +234,7 @@ func TestHTLCScriptValidation(t *testing.T) {
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
 
 	// Missing buyer pubkey
-	_, err := x402.BuildHTLC(&x402.HTLCParams{
+	_, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  []byte{0x02, 0x03}, // too short
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -242,10 +242,10 @@ func TestHTLCScriptValidation(t *testing.T) {
 		Amount:       1000,
 		Timeout:      144,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed)
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
 	// Missing seller address
-	_, err = x402.BuildHTLC(&x402.HTLCParams{
+	_, err = payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   []byte{0x11}, // too short
@@ -253,10 +253,10 @@ func TestHTLCScriptValidation(t *testing.T) {
 		Amount:       1000,
 		Timeout:      144,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed)
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
 	// Zero amount
-	_, err = x402.BuildHTLC(&x402.HTLCParams{
+	_, err = payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -264,11 +264,11 @@ func TestHTLCScriptValidation(t *testing.T) {
 		Amount:       0,
 		Timeout:      144,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed)
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
 	// Nil params
-	_, err = x402.BuildHTLC(nil)
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed)
+	_, err = payment.BuildHTLC(nil)
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 }
 
 // --- TestDaemonContentNegotiation ---
@@ -428,7 +428,7 @@ func TestInvoicePriceCalculation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			price := x402.CalculatePrice(tc.pricePerKB, tc.fileSize)
+			price := payment.CalculatePrice(tc.pricePerKB, tc.fileSize)
 			assert.Equal(t, tc.expected, price)
 		})
 	}
@@ -437,7 +437,7 @@ func TestInvoicePriceCalculation(t *testing.T) {
 // --- TestEndToEndPaymentFlow ---
 
 func TestEndToEndPaymentFlow(t *testing.T) {
-	// Simulates the full x402 payment flow without a real BSV node
+	// Simulates the full payment flow without a real BSV node
 	w, _, _ := createTestWallet(t, &wallet.MainNet)
 
 	// Seller setup
@@ -461,19 +461,19 @@ func TestEndToEndPaymentFlow(t *testing.T) {
 	require.NoError(t, chErr)
 
 	// Create invoice
-	invoice := x402.NewInvoice(100, uint64(len(plaintext)), "1SellerAddr...", capsuleHash, 3600)
+	invoice := payment.NewInvoice(100, uint64(len(plaintext)), "1SellerAddr...", capsuleHash, 3600)
 	assert.Greater(t, invoice.Price, uint64(0))
 	assert.False(t, invoice.IsExpired())
 
 	// Build HTLC (buyer creates this)
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerKey.PublicKey.Compressed(),
 		SellerPubKey: sellerPub,
 		SellerAddr:   bytes.Repeat([]byte{0x11}, 20),
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)

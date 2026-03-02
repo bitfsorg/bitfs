@@ -32,12 +32,12 @@ func (d *Daemon) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /_bitfs/meta/{pnode}/{path...}", wrap(d.handleMeta))
 	mux.HandleFunc("GET /_bitfs/versions/{pnode}/{path...}", wrap(d.handleVersions))
 
-	// x402 Buy endpoints
+	// Payment Buy endpoints
 	mux.HandleFunc("GET /_bitfs/buy/{txid}", wrap(d.handleGetBuyInfo))
 	mux.HandleFunc("POST /_bitfs/buy/{txid}", wrap(d.handleSubmitHTLC))
 	mux.HandleFunc("OPTIONS /_bitfs/buy/{txid}", wrap(d.handleOptions))
 
-	// x402 Bandwidth payment
+	// Bandwidth payment
 	mux.HandleFunc("POST /_bitfs/pay/{invoice_id}", wrap(d.handlePayInvoice))
 	mux.HandleFunc("OPTIONS /_bitfs/pay/{invoice_id}", wrap(d.handleOptions))
 

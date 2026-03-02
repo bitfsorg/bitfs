@@ -16,16 +16,16 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // testPaymentAddr is a well-known Bitcoin address used in tests.
 // This is the genesis block coinbase address.
 const testPaymentAddr = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
 
-// mustCalcPrice calls x402.CalculatePrice and panics on error (test helper).
+// mustCalcPrice calls payment.CalculatePrice and panics on error (test helper).
 func mustCalcPrice(pricePerKB, fileSize uint64) uint64 {
-	p, err := x402.CalculatePrice(pricePerKB, fileSize)
+	p, err := payment.CalculatePrice(pricePerKB, fileSize)
 	if err != nil {
 		panic(fmt.Sprintf("mustCalcPrice(%d, %d): %v", pricePerKB, fileSize, err))
 	}
@@ -82,12 +82,12 @@ func TestServePaidContent_Returns402WithInvoice(t *testing.T) {
 	assert.Equal(t, http.StatusPaymentRequired, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-	// Verify x402 headers set by libbitfs/x402.SetPaymentHeaders.
+	// Verify payment headers set by libbitfs/payment.SetPaymentHeaders.
 	assert.Equal(t, "50", w.Header().Get("X-Price-Per-KB"))
 	assert.Equal(t, "10485760", w.Header().Get("X-File-Size"))
-	assert.NotEmpty(t, w.Header().Get("X-Price"), "X-Price header should be set by x402")
-	assert.NotEmpty(t, w.Header().Get("X-Invoice-Id"), "X-Invoice-Id header should be set by x402")
-	assert.NotEmpty(t, w.Header().Get("X-Expiry"), "X-Expiry header should be set by x402")
+	assert.NotEmpty(t, w.Header().Get("X-Price"), "X-Price header should be set by payment")
+	assert.NotEmpty(t, w.Header().Get("X-Invoice-Id"), "X-Invoice-Id header should be set by payment")
+	assert.NotEmpty(t, w.Header().Get("X-Expiry"), "X-Expiry header should be set by payment")
 
 	// Verify total price: ceil(50 * 10485760 / 1024) = 50 * 10240 = 512000
 	expectedTotal := mustCalcPrice(50, 10485760)
@@ -198,7 +198,7 @@ func TestServePaidContent_X402HeadersComplete(t *testing.T) {
 
 	assert.Equal(t, http.StatusPaymentRequired, w.Code)
 
-	// All five x402 headers should be present.
+	// All five payment headers should be present.
 	assert.NotEmpty(t, w.Header().Get("X-Price"), "X-Price should be set")
 	assert.NotEmpty(t, w.Header().Get("X-Price-Per-KB"), "X-Price-Per-KB should be set")
 	assert.NotEmpty(t, w.Header().Get("X-File-Size"), "X-File-Size should be set")
@@ -472,7 +472,7 @@ func TestHandleSubmitHTLC_NoCapsule(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "NO_CAPSULE")
 }
 
-// --- x402 VerifyPayment Integration Tests ---
+// --- VerifyPayment Integration Tests ---
 
 func TestHandleSubmitHTLC_InvalidTxBytes(t *testing.T) {
 	d, _, _, _ := newTestDaemon(t)
@@ -610,7 +610,7 @@ func TestFullPurchaseFlow(t *testing.T) {
 	d.Handler().ServeHTTP(w1, req1)
 
 	assert.Equal(t, http.StatusPaymentRequired, w1.Code)
-	// Verify x402 headers are set.
+	// Verify payment headers are set.
 	assert.NotEmpty(t, w1.Header().Get("X-Price"))
 	assert.NotEmpty(t, w1.Header().Get("X-Invoice-Id"))
 

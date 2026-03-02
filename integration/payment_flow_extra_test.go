@@ -20,7 +20,7 @@ import (
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // --- Invoice Expiry & Fields Tests ---
@@ -29,7 +29,7 @@ import (
 // has an expiry at or before the current time, so it becomes expired very quickly.
 func TestInvoiceExpiryZeroTTL(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xaa}, 32)
-	invoice := x402.NewInvoice(100, 1024, "1TestAddr", capsuleHash, 0)
+	invoice := payment.NewInvoice(100, 1024, "1TestAddr", capsuleHash, 0)
 	require.NotNil(t, invoice)
 
 	// With ttl=0, Expiry = time.Now().Unix() + 0.
@@ -47,7 +47,7 @@ func TestInvoiceExpiryZeroTTL(t *testing.T) {
 // is not expired immediately after creation.
 func TestInvoiceExpiryFuture(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xbb}, 32)
-	invoice := x402.NewInvoice(50, 2048, "1FutureAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(50, 2048, "1FutureAddr", capsuleHash, 3600)
 	require.NotNil(t, invoice)
 
 	assert.False(t, invoice.IsExpired(), "invoice with 1-hour TTL should not be expired immediately")
@@ -58,7 +58,7 @@ func TestInvoiceExpiryFuture(t *testing.T) {
 // TestInvoiceZeroPrice verifies that an invoice with pricePerKB=0 has price 0.
 func TestInvoiceZeroPrice(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xcc}, 32)
-	invoice := x402.NewInvoice(0, 1024, "1ZeroPriceAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(0, 1024, "1ZeroPriceAddr", capsuleHash, 3600)
 	require.NotNil(t, invoice)
 
 	assert.Equal(t, uint64(0), invoice.Price, "price should be 0 when pricePerKB is 0")
@@ -72,7 +72,7 @@ func TestInvoiceLargeFile(t *testing.T) {
 	var fileSize uint64 = 1073741824 // 1 GB
 	var pricePerKB uint64 = 10
 
-	invoice := x402.NewInvoice(pricePerKB, fileSize, "1LargeFileAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(pricePerKB, fileSize, "1LargeFileAddr", capsuleHash, 3600)
 	require.NotNil(t, invoice)
 
 	// 1GB = 1048576 KB exactly, so price = 10 * 1048576 = 10485760 (no rounding needed).
@@ -80,7 +80,7 @@ func TestInvoiceLargeFile(t *testing.T) {
 		"1GB file at 10 sat/KB should cost 10485760 satoshis")
 
 	// Also verify via CalculatePrice directly.
-	expected := x402.CalculatePrice(pricePerKB, fileSize)
+	expected := payment.CalculatePrice(pricePerKB, fileSize)
 	assert.Equal(t, expected, invoice.Price)
 }
 
@@ -91,7 +91,7 @@ func TestInvoiceFieldsPreserved(t *testing.T) {
 	var pricePerKB uint64 = 200
 	var fileSize uint64 = 5120
 
-	invoice := x402.NewInvoice(pricePerKB, fileSize, paymentAddr, capsuleHash, 7200)
+	invoice := payment.NewInvoice(pricePerKB, fileSize, paymentAddr, capsuleHash, 7200)
 	require.NotNil(t, invoice)
 
 	assert.NotEmpty(t, invoice.ID, "invoice ID should not be empty")
@@ -99,7 +99,7 @@ func TestInvoiceFieldsPreserved(t *testing.T) {
 	assert.Equal(t, capsuleHash, invoice.CapsuleHash, "capsule hash should match")
 	assert.Equal(t, pricePerKB, invoice.PricePerKB, "pricePerKB should match")
 	assert.Equal(t, fileSize, invoice.FileSize, "fileSize should match")
-	assert.Equal(t, x402.CalculatePrice(pricePerKB, fileSize), invoice.Price,
+	assert.Equal(t, payment.CalculatePrice(pricePerKB, fileSize), invoice.Price,
 		"price should match CalculatePrice result")
 }
 
@@ -111,7 +111,7 @@ func TestHTLCParamsNilCapsuleHash(t *testing.T) {
 	sellerAddr := bytes.Repeat([]byte{0x11}, 20)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	_, err := x402.BuildHTLC(&x402.HTLCParams{
+	_, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -119,7 +119,7 @@ func TestHTLCParamsNilCapsuleHash(t *testing.T) {
 		Amount:       1000,
 		Timeout:      144,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed,
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed,
 		"nil capsule hash should fail with ErrHTLCBuildFailed")
 }
 
@@ -130,7 +130,7 @@ func TestHTLCParamsCapsuleHashWrongLength(t *testing.T) {
 	shortHash := bytes.Repeat([]byte{0xab}, 16) // 16 bytes instead of 32
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	_, err := x402.BuildHTLC(&x402.HTLCParams{
+	_, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -138,7 +138,7 @@ func TestHTLCParamsCapsuleHashWrongLength(t *testing.T) {
 		Amount:       1000,
 		Timeout:      144,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed,
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed,
 		"16-byte capsule hash should fail with ErrHTLCBuildFailed")
 }
 
@@ -150,7 +150,7 @@ func TestHTLCParamsZeroTimeout(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	_, err := x402.BuildHTLC(&x402.HTLCParams{
+	_, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -158,7 +158,7 @@ func TestHTLCParamsZeroTimeout(t *testing.T) {
 		Amount:       1000,
 		Timeout:      0,
 	})
-	assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed,
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed,
 		"zero timeout should fail with ErrHTLCBuildFailed")
 }
 
@@ -173,13 +173,13 @@ func TestHTLCScriptContainsBuyerPubKey(t *testing.T) {
 	buyerPub := buyerKey.PublicKey.Compressed()
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
 		CapsuleHash:  capsuleHash,
 		Amount:       5000,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	assert.True(t, bytes.Contains(htlcScript, buyerPub),
@@ -193,13 +193,13 @@ func TestHTLCScriptContainsSellerAddr(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0x55}, 32)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
 		CapsuleHash:  capsuleHash,
 		Amount:       2000,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	assert.True(t, bytes.Contains(htlcScript, sellerAddr),
@@ -213,13 +213,13 @@ func TestHTLCScriptContainsCapsuleHash(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0x77}, 32)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
 		CapsuleHash:  capsuleHash,
 		Amount:       3000,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash),
@@ -437,7 +437,7 @@ func TestDaemonNewNilConfig(t *testing.T) {
 	assert.ErrorIs(t, err, daemon.ErrNilConfig)
 }
 
-// --- x402 Price Calculation Boundary Tests ---
+// --- Price Calculation Boundary Tests ---
 
 // TestX402PriceCalculationBoundary tests edge cases in price calculation.
 func TestX402PriceCalculationBoundary(t *testing.T) {
@@ -458,7 +458,7 @@ func TestX402PriceCalculationBoundary(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			price := x402.CalculatePrice(tc.pricePerKB, tc.fileSize)
+			price := payment.CalculatePrice(tc.pricePerKB, tc.fileSize)
 			assert.Equal(t, tc.expected, price)
 		})
 	}
@@ -470,29 +470,29 @@ func TestX402PriceCalculationBoundary(t *testing.T) {
 		var fileSize uint64 = 1024
 
 		// Should not panic.
-		price := x402.CalculatePrice(pricePerKB, fileSize)
+		price := payment.CalculatePrice(pricePerKB, fileSize)
 		assert.Greater(t, price, uint64(0), "price should be positive for non-zero inputs")
 	})
 }
 
-// --- x402 Payment Headers Round-Trip ---
+// --- Payment Headers Round-Trip ---
 
 // TestX402PaymentHeadersRoundTrip verifies full header set/parse cycle.
 func TestX402PaymentHeadersRoundTrip(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
-	invoice := x402.NewInvoice(250, 8192, "1RoundTripAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(250, 8192, "1RoundTripAddr", capsuleHash, 3600)
 	require.NotNil(t, invoice)
 
 	// Set headers on response.
 	recorder := httptest.NewRecorder()
-	headers := x402.PaymentHeadersFromInvoice(invoice)
-	x402.SetPaymentHeaders(recorder, headers)
+	headers := payment.PaymentHeadersFromInvoice(invoice)
+	payment.SetPaymentHeaders(recorder, headers)
 
 	// Parse headers from response.
 	resp := recorder.Result()
 	assert.Equal(t, http.StatusPaymentRequired, resp.StatusCode)
 
-	parsed, err := x402.ParsePaymentHeaders(resp)
+	parsed, err := payment.ParsePaymentHeaders(resp)
 	require.NoError(t, err)
 
 	assert.Equal(t, invoice.Price, parsed.Price)
@@ -504,13 +504,13 @@ func TestX402PaymentHeadersRoundTrip(t *testing.T) {
 
 // TestX402ParsePaymentHeadersMissing verifies ParsePaymentHeaders fails when headers are absent.
 func TestX402ParsePaymentHeadersMissing(t *testing.T) {
-	// Create a response with no x402 headers.
+	// Create a response with no payment headers.
 	recorder := httptest.NewRecorder()
 	recorder.WriteHeader(http.StatusOK)
 	resp := recorder.Result()
 
-	_, err := x402.ParsePaymentHeaders(resp)
-	assert.ErrorIs(t, err, x402.ErrMissingHeaders,
+	_, err := payment.ParsePaymentHeaders(resp)
+	assert.ErrorIs(t, err, payment.ErrMissingHeaders,
 		"missing payment headers should return ErrMissingHeaders")
 }
 
@@ -531,7 +531,7 @@ func TestEndToEndFreeContentFlow(t *testing.T) {
 
 	// Create invoice with price=0 for free content.
 	capsuleHash := bytes.Repeat([]byte{0x00}, 32)
-	invoice := x402.NewInvoice(0, uint64(len(plaintext)), "1FreeAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(0, uint64(len(plaintext)), "1FreeAddr", capsuleHash, 3600)
 	assert.Equal(t, uint64(0), invoice.Price, "free content should have zero price")
 
 	// Any party can decrypt AccessFree content using only the public key.
@@ -566,19 +566,19 @@ func TestEndToEndEncryptPayDecrypt(t *testing.T) {
 	require.NoError(t, chErr)
 
 	// Step 4: Create invoice.
-	invoice := x402.NewInvoice(50, uint64(len(plaintext)), "1SellerPaidAddr", capsuleHash, 3600)
+	invoice := payment.NewInvoice(50, uint64(len(plaintext)), "1SellerPaidAddr", capsuleHash, 3600)
 	assert.Greater(t, invoice.Price, uint64(0), "paid content should have non-zero price")
 	assert.False(t, invoice.IsExpired())
 
 	// Step 5: Buyer builds HTLC.
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerKey.PublicKey.Compressed(),
 		SellerPubKey: sellerPub,
 		SellerAddr:   bytes.Repeat([]byte{0x11}, 20),
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
@@ -604,13 +604,13 @@ func TestHTLCDifferentAmounts(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("amount_%d", amount),
 			func(t *testing.T) {
-				htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+				htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 					BuyerPubKey:  buyerPub,
 					SellerPubKey: sellerPub,
 					SellerAddr:   sellerAddr,
 					CapsuleHash:  capsuleHash,
 					Amount:       amount,
-					Timeout:      x402.DefaultHTLCTimeout,
+					Timeout:      payment.DefaultHTLCTimeout,
 				})
 				require.NoError(t, err, "BuildHTLC should succeed for amount %d", amount)
 				assert.NotEmpty(t, htlcScript)
@@ -628,13 +628,13 @@ func TestHTLCAmountBelowDust(t *testing.T) {
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
 	// Amount=1 is below the dust limit (546) but HTLC construction should succeed.
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
 		CapsuleHash:  capsuleHash,
 		Amount:       1,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err, "HTLC with below-dust amount should still build successfully")
 	assert.NotEmpty(t, htlcScript)
@@ -733,14 +733,14 @@ func TestDaemonContentNegotiationAllFormats(t *testing.T) {
 // TestMultipleConcurrentInvoices verifies that invoices created concurrently have unique IDs.
 func TestMultipleConcurrentInvoices(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
-	var invoices [5]*x402.Invoice
+	var invoices [5]*payment.Invoice
 
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			invoices[idx] = x402.NewInvoice(
+			invoices[idx] = payment.NewInvoice(
 				uint64(100*(idx+1)),
 				uint64(1024*(idx+1)),
 				"1ConcurrentAddr",
@@ -767,7 +767,7 @@ func TestInvoiceIDUniqueness(t *testing.T) {
 	ids := make(map[string]struct{}, 100)
 
 	for i := 0; i < 100; i++ {
-		invoice := x402.NewInvoice(100, 1024, "1UniqueAddr", capsuleHash, 3600)
+		invoice := payment.NewInvoice(100, 1024, "1UniqueAddr", capsuleHash, 3600)
 		require.NotNil(t, invoice)
 		require.NotEmpty(t, invoice.ID)
 

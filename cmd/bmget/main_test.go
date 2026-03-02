@@ -23,7 +23,7 @@ import (
 	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // testPubKey is a well-known compressed public key hex (33 bytes, prefix 02).
@@ -1187,7 +1187,7 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 
 	cfg := &buy.BuyerConfig{
 		PrivKey:     buyerPriv,
-		ManualUTXOs: []*x402.HTLCUTXO{utxo},
+		ManualUTXOs: []*payment.HTLCUTXO{utxo},
 	}
 
 	entry := downloadFile(c, c, nodePubHex, "/paid.txt", localPath, true, cfg)
@@ -1268,7 +1268,7 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 
 	cfg := &buy.BuyerConfig{
 		PrivKey:     buyerPriv,
-		ManualUTXOs: []*x402.HTLCUTXO{utxo},
+		ManualUTXOs: []*payment.HTLCUTXO{utxo},
 	}
 
 	entry := downloadPaidFile(c, &client.MetaResponse{
@@ -1347,7 +1347,7 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 
 	cfg := &buy.BuyerConfig{
 		PrivKey:     buyerPriv,
-		ManualUTXOs: []*x402.HTLCUTXO{utxo},
+		ManualUTXOs: []*payment.HTLCUTXO{utxo},
 	}
 
 	entry := downloadPaidFile(c, &client.MetaResponse{

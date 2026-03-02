@@ -20,10 +20,10 @@ import (
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/tx"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
-// TestPaidPurchaseFlow exercises the full x402 paid purchase flow:
+// TestPaidPurchaseFlow exercises the full paid purchase flow:
 //
 //  1. Seller creates a Metanet file node with AccessPaid encryption
 //  2. Buyer requests purchase; seller computes capsule = ECDH(D_node, P_buyer).x
@@ -175,18 +175,18 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	require.Equal(t, expectedHasher.Sum(nil), capsuleHash, "capsule hash should be SHA256(fileTxID || capsule)")
 
 	// ==================================================================
-	// Step 6: Create x402 invoice.
+	// Step 6: Create payment invoice.
 	// ==================================================================
 	pricePerKB := uint64(100) // 100 sat/KB
 	fileSize := uint64(len(originalContent))
 	sellerAddr := sellerFeeAddr.AddressString
 
-	invoice, err := x402.NewInvoice(pricePerKB, fileSize, sellerAddr, capsuleHash, 3600)
+	invoice, err := payment.NewInvoice(pricePerKB, fileSize, sellerAddr, capsuleHash, 3600)
 	require.NoError(t, err, "create invoice")
 	require.NotEmpty(t, invoice.ID, "invoice should have an ID")
 	require.False(t, invoice.IsExpired(), "invoice should not be expired")
 
-	expectedPrice := x402.CalculatePrice(pricePerKB, fileSize)
+	expectedPrice := payment.CalculatePrice(pricePerKB, fileSize)
 	require.Equal(t, expectedPrice, invoice.Price, "invoice price should match calculated price")
 	require.Equal(t, capsuleHash, invoice.CapsuleHash, "invoice capsule hash should match")
 	t.Logf("invoice: id=%s price=%d sat (%.2f sat/KB * %d bytes)",
@@ -200,13 +200,13 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	require.Len(t, sellerPKH, 20, "seller PKH should be 20 bytes")
 
 	sellerPubKeyCompressed := sellerFeeKey.PublicKey.Compressed()
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerFeeKey.PublicKey.Compressed(),
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err, "build HTLC script")
 	require.NotEmpty(t, htlcScript, "HTLC script should not be empty")
@@ -278,14 +278,14 @@ func TestPaidPurchaseFlow(t *testing.T) {
 
 	changePKH := buyerFeeKey.PublicKey.Hash()
 
-	fundingResult, err := x402.BuildHTLCFundingTx(&x402.HTLCFundingParams{
+	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
 		BuyerPrivKey: buyerFeeKey.PrivateKey,
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
-		Timeout:      x402.DefaultHTLCTimeout,
-		UTXOs: []*x402.HTLCUTXO{{
+		Timeout:      payment.DefaultHTLCTimeout,
+		UTXOs: []*payment.HTLCUTXO{{
 			TxID:         buyerUTXO.TxID,
 			Vout:         buyerUTXO.Vout,
 			Amount:       buyerUTXO.Amount,
@@ -311,7 +311,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	// ==================================================================
 	// Step 9: Seller claims the HTLC using BuildSellerClaimTx (real signature).
 	// ==================================================================
-	claimTx, err := x402.BuildSellerClaimTx(&x402.SellerClaimParams{
+	claimTx, err := payment.BuildSellerClaimTx(&payment.SellerClaimParams{
 		FundingTxID:   fundingResult.TxID,
 		FundingVout:   fundingResult.HTLCVout,
 		FundingAmount: fundingResult.HTLCAmount,
@@ -335,7 +335,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	claimTxBytes := claimTx.Bytes()
 	require.NotEmpty(t, claimTxBytes, "claim tx should serialize")
 
-	extractedCapsule, err := x402.ParseHTLCPreimage(claimTxBytes, nil)
+	extractedCapsule, err := payment.ParseHTLCPreimage(claimTxBytes, nil)
 	require.NoError(t, err, "parse HTLC preimage from claim tx")
 	require.Equal(t, capsule, extractedCapsule,
 		"extracted capsule should match original capsule")
@@ -465,7 +465,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	assert.False(t, invoice.IsExpired())
 
 	// Verify payment headers can be created from the invoice.
-	headers := x402.PaymentHeadersFromInvoice(invoice)
+	headers := payment.PaymentHeadersFromInvoice(invoice)
 	assert.Equal(t, invoice.Price, headers.Price)
 	assert.Equal(t, invoice.PricePerKB, headers.PricePerKB)
 	assert.Equal(t, invoice.FileSize, headers.FileSize)
@@ -551,13 +551,13 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	// ------------------------------------------------------------------
 	sellerPKH := sellerPubKey.Hash()
 
-	htlcScript, err := x402.BuildHTLC(&x402.HTLCParams{
+	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPubKey.Compressed(),
 		SellerPubKey: sellerPubKey.Compressed(),
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
@@ -598,7 +598,7 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	require.NoError(t, unlockScript.AppendOpcodes(script.OpTRUE))
 	claimTx.Inputs[0].UnlockingScript = unlockScript
 
-	extracted, err := x402.ParseHTLCPreimage(claimTx.Bytes(), nil)
+	extracted, err := payment.ParseHTLCPreimage(claimTx.Bytes(), nil)
 	require.NoError(t, err, "extract preimage from simulated claim tx")
 	assert.Equal(t, capsule, extracted, "extracted preimage should equal capsule")
 
@@ -607,11 +607,11 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	assert.Equal(t, capsuleHash, h[:], "SHA256(extracted) should equal capsule hash")
 
 	// ------------------------------------------------------------------
-	// 6. Verify x402 invoice creation.
+	// 6. Verify payment invoice creation.
 	// ------------------------------------------------------------------
-	inv, invErr := x402.NewInvoice(50, uint64(len(plaintext)), "1SellerAddr", capsuleHash, 300)
+	inv, invErr := payment.NewInvoice(50, uint64(len(plaintext)), "1SellerAddr", capsuleHash, 300)
 	require.NoError(t, invErr, "create invoice")
-	assert.Equal(t, x402.CalculatePrice(50, uint64(len(plaintext))), inv.Price)
+	assert.Equal(t, payment.CalculatePrice(50, uint64(len(plaintext))), inv.Price)
 	assert.Equal(t, capsuleHash, inv.CapsuleHash)
 	assert.False(t, inv.IsExpired())
 
@@ -651,14 +651,14 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	timeout := uint32(blockCount + 1)
 
 	// Build and broadcast HTLC funding tx.
-	fundingResult, err := x402.BuildHTLCFundingTx(&x402.HTLCFundingParams{
+	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
 		BuyerPrivKey: buyerFeeKey.PrivateKey,
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
 		Timeout:      timeout,
-		UTXOs: []*x402.HTLCUTXO{{
+		UTXOs: []*payment.HTLCUTXO{{
 			TxID:         buyerUTXO.TxID,
 			Vout:         buyerUTXO.Vout,
 			Amount:       buyerUTXO.Amount,
@@ -674,7 +674,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	t.Logf("HTLC funding txid: %s (timeout at block %d)", htlcTxID, timeout)
 
 	// Step 1: Seller pre-signs the refund tx (seller's half of 2-of-2 multisig).
-	preSignResult, err := x402.BuildSellerPreSignedRefund(&x402.SellerPreSignParams{
+	preSignResult, err := payment.BuildSellerPreSignedRefund(&payment.SellerPreSignParams{
 		FundingTxID:     fundingResult.TxID,
 		FundingVout:     fundingResult.HTLCVout,
 		FundingAmount:   fundingResult.HTLCAmount,
@@ -689,7 +689,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 		len(preSignResult.TxBytes), len(preSignResult.SellerSig))
 
 	// Step 2: Buyer counter-signs (adds their half of 2-of-2 multisig).
-	refundTx, err := x402.BuildBuyerRefundTx(&x402.BuyerRefundParams{
+	refundTx, err := payment.BuildBuyerRefundTx(&payment.BuyerRefundParams{
 		SellerPreSignedTx: preSignResult.TxBytes,
 		SellerSig:         preSignResult.SellerSig,
 		HTLCScript:        fundingResult.HTLCScript,

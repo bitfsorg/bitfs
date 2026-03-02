@@ -18,14 +18,14 @@ import (
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // setupBuyServer creates a daemon httptest.Server configured for buy-API testing.
 //
 // It registers a paid file node ("/docs/secret.txt") in a mock MetanetService,
 // encrypts test content via Method 42, stores ciphertext in a real FileStore,
-// and enables x402 payment so that accessing the paid path returns HTTP 402
+// and enables payment so that accessing the paid path returns HTTP 402
 // with an invoice. Returns the test server, seller wallet, and the node's
 // Method 42 encryption result (for capsule/key verification).
 func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.EncryptResult) {
@@ -82,7 +82,7 @@ func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.E
 
 	config := daemon.DefaultConfig()
 	config.Security.RateLimit.RPM = 0 // disable rate limiting for tests
-	config.X402.Enabled = true         // enable x402 so paid paths return 402
+	config.X402.Enabled = true         // enable payment so paid paths return 402
 
 	d, err := daemon.New(config, walletSvc, fileStore, metanetSvc)
 	require.NoError(t, err, "create daemon")
@@ -93,10 +93,10 @@ func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.E
 	return server, w, encResult
 }
 
-// createInvoice triggers the paid-content path to produce an x402 invoice.
+// createInvoice triggers the paid-content path to produce a payment invoice.
 // It issues GET /docs/secret.txt, expects HTTP 402, extracts the X-Invoice-Id
-// header, and returns the invoice ID along with parsed x402 payment headers.
-func createInvoice(t *testing.T, serverURL string) (string, *x402.PaymentHeaders) {
+// header, and returns the invoice ID along with parsed payment headers.
+func createInvoice(t *testing.T, serverURL string) (string, *payment.PaymentHeaders) {
 	t.Helper()
 
 	req, err := http.NewRequest("GET", serverURL+"/docs/secret.txt", nil)
@@ -110,8 +110,8 @@ func createInvoice(t *testing.T, serverURL string) (string, *x402.PaymentHeaders
 	require.Equal(t, http.StatusPaymentRequired, resp.StatusCode,
 		"paid path should return 402 Payment Required")
 
-	headers, err := x402.ParsePaymentHeaders(resp)
-	require.NoError(t, err, "parse x402 headers from 402 response")
+	headers, err := payment.ParsePaymentHeaders(resp)
+	require.NoError(t, err, "parse payment headers from 402 response")
 	require.NotEmpty(t, headers.InvoiceID, "invoice ID should not be empty")
 
 	return headers.InvoiceID, headers
@@ -151,11 +151,11 @@ func TestGetBuyInfo(t *testing.T) {
 		assert.Equal(t, invoiceID, buyInfo["invoice_id"],
 			"invoice_id should match the one from 402 response")
 
-		// Verify total_price matches the x402 header price.
+		// Verify total_price matches the payment header price.
 		totalPrice, ok := buyInfo["total_price"].(float64)
 		require.True(t, ok, "total_price should be a number")
 		assert.Equal(t, float64(payHeaders.Price), totalPrice,
-			"total_price should match x402 header price")
+			"total_price should match payment header price")
 
 		// Verify price_per_kb.
 		pricePerKB, ok := buyInfo["price_per_kb"].(float64)
@@ -290,7 +290,7 @@ func TestSubmitInvalidHTLC(t *testing.T) {
 }
 
 // TestBuyFlowX402Headers verifies that the 402 Payment Required response
-// from accessing a paid path includes all required x402 HTTP headers and
+// from accessing a paid path includes all required payment HTTP headers and
 // that the JSON body contains the expected invoice fields.
 func TestBuyFlowX402Headers(t *testing.T) {
 	server, _, _ := setupBuyServer(t)
@@ -307,7 +307,7 @@ func TestBuyFlowX402Headers(t *testing.T) {
 	require.Equal(t, http.StatusPaymentRequired, resp.StatusCode,
 		"paid content should return 402")
 
-	// Verify all x402 headers are present.
+	// Verify all payment headers are present.
 	assert.NotEmpty(t, resp.Header.Get("X-Price"), "X-Price header should be set")
 	assert.NotEmpty(t, resp.Header.Get("X-Price-Per-KB"), "X-Price-Per-KB header should be set")
 	assert.NotEmpty(t, resp.Header.Get("X-File-Size"), "X-File-Size header should be set")

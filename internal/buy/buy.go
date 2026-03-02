@@ -10,7 +10,7 @@ import (
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/network"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 const defaultFeeRate = uint64(1) // 1 sat/byte
@@ -41,7 +41,7 @@ func (p *BuyParams) validate() error {
 	return nil
 }
 
-// Buy executes the full x402 purchase flow:
+// Buy executes the full payment purchase flow:
 //  1. GetBuyInfo — fetch capsule_hash, price, payment_addr from the daemon
 //  2. Resolve UTXOs — use manual UTXOs if configured, otherwise query blockchain
 //  3. Build HTLC funding tx — create and sign the HTLC funding transaction
@@ -97,13 +97,13 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 	// Step 3: Build HTLC funding transaction.
 	buyerPKH := privKey.PubKey().Hash() // 20-byte pubkey hash for change address
 
-	fundingResult, err := x402.BuildHTLCFundingTx(&x402.HTLCFundingParams{
+	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
 		BuyerPrivKey: privKey,
 		SellerAddr:   sellerAddr,
 		SellerPubKey: sellerPubKey,
 		CapsuleHash:  capsuleHash,
 		Amount:       buyInfo.Price,
-		Timeout:      x402.DefaultHTLCTimeout,
+		Timeout:      payment.DefaultHTLCTimeout,
 		UTXOs:        utxos,
 		ChangeAddr:   buyerPKH,
 		FeeRate:      defaultFeeRate,
@@ -165,7 +165,7 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 // resolveUTXOs returns UTXOs for the HTLC funding transaction. It uses
 // manually specified UTXOs if available, otherwise queries the blockchain
 // service for the buyer's UTXOs.
-func resolveUTXOs(params *BuyParams, price uint64) ([]*x402.HTLCUTXO, error) {
+func resolveUTXOs(params *BuyParams, price uint64) ([]*payment.HTLCUTXO, error) {
 	// Prefer manual UTXOs from config (--utxo flag).
 	if len(params.Config.ManualUTXOs) > 0 {
 		// Validate that manual UTXOs cover the price.

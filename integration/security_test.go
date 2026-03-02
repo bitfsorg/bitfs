@@ -18,7 +18,7 @@ import (
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/x402"
+	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // --- TestWrongKeyDecryptionFails ---
@@ -530,10 +530,10 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		params *x402.HTLCParams
+		params *payment.HTLCParams
 	}{
 		{"nil params", nil},
-		{"empty BuyerPubKey", &x402.HTLCParams{
+		{"empty BuyerPubKey", &payment.HTLCParams{
 			BuyerPubKey:  []byte{},
 			SellerPubKey: validSellerPub,
 			SellerAddr:   validSellerAddr,
@@ -541,7 +541,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			Amount:       1000,
 			Timeout:      144,
 		}},
-		{"wrong-length SellerAddr", &x402.HTLCParams{
+		{"wrong-length SellerAddr", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
 			SellerPubKey: validSellerPub,
 			SellerAddr:   []byte{0x11, 0x22}, // too short
@@ -549,7 +549,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			Amount:       1000,
 			Timeout:      144,
 		}},
-		{"nil CapsuleHash", &x402.HTLCParams{
+		{"nil CapsuleHash", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
 			SellerPubKey: validSellerPub,
 			SellerAddr:   validSellerAddr,
@@ -557,7 +557,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			Amount:       1000,
 			Timeout:      144,
 		}},
-		{"zero Amount", &x402.HTLCParams{
+		{"zero Amount", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
 			SellerPubKey: validSellerPub,
 			SellerAddr:   validSellerAddr,
@@ -569,8 +569,8 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := x402.BuildHTLC(tc.params)
-			assert.ErrorIs(t, err, x402.ErrHTLCBuildFailed)
+			_, err := payment.BuildHTLC(tc.params)
+			assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 		})
 	}
 }
