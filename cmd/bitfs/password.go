@@ -74,7 +74,6 @@ func promptNetwork() (string, error) {
 	}{
 		{"mainnet", "BSV mainnet (production)"},
 		{"testnet", "BSV testnet (testing)"},
-		{"teratestnet", "BSV Teranode testnet (scaling)"},
 		{"regtest", "Local regtest (development)"},
 	}
 

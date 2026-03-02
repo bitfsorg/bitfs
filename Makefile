@@ -3,7 +3,7 @@ BINS    := bitfs bls bcat bget bstat btree
 OUTDIR  := bin
 
 .PHONY: all build test lint clean e2e install help
-.PHONY: regtest regtest-down testnet testnet-down stn stn-down
+.PHONY: regtest regtest-down testnet testnet-down
 .PHONY: dashboard dashboard-dev
 
 all: build ## Build all binaries (default)
@@ -42,14 +42,6 @@ testnet: ## Start testnet node (RPC localhost:18333)
 
 testnet-down: ## Stop testnet node
 	cd e2e && docker compose -f docker-compose.testnet.yml down
-
-stn: ## Start Teranode STN node (RPC localhost:18334)
-	cd e2e && docker compose -f docker-compose.stn.yml up -d
-	@echo "STN node syncing. RPC at localhost:18334 (user: bitfs, pass: bitfs)"
-	@echo "Use the faucet to fund: https://faucet.teranode.bsvblockchain.org"
-
-stn-down: ## Stop STN node
-	cd e2e && docker compose -f docker-compose.stn.yml down
 
 e2e-up: regtest ## Alias for regtest
 

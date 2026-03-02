@@ -140,7 +140,7 @@ func TestFormatSats(t *testing.T) {
 
 func TestPrintFundingInstructions(t *testing.T) {
 	// Just verify no panic for each network type.
-	for _, net := range []string{"regtest", "testnet", "teratestnet"} {
+	for _, net := range []string{"regtest", "testnet", "mainnet"} {
 		t.Run(net, func(t *testing.T) {
 			printFundingInstructions(net, "1BitcoinEaterAddressDontSendf59kuE")
 		})

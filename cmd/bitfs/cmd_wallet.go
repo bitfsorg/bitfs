@@ -57,7 +57,7 @@ func runWallet(args []string) int {
 func runWalletInit(args []string) int {
 	fs := flag.NewFlagSet("wallet init", flag.ContinueOnError)
 	words := fs.Int("words", 12, "mnemonic word count (12 or 24)")
-	netName := fs.String("network", "mainnet", "BSV network: mainnet, testnet, teratestnet, or regtest")
+	netName := fs.String("network", "mainnet", "BSV network: mainnet, testnet, or regtest")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing; normally prompted)")
 
@@ -96,7 +96,7 @@ func runWalletInit(args []string) int {
 	// Resolve network config.
 	netCfg, err := wallet.GetNetwork(*netName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: --network must be mainnet, testnet, teratestnet, or regtest\n")
+		fmt.Fprintf(os.Stderr, "Error: --network must be mainnet, testnet, or regtest\n")
 		return exitUsageError
 	}
 

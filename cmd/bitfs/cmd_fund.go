@@ -173,16 +173,6 @@ func printFundingInstructions(netName, address string) {
 		fmt.Println("     https://faucet.bitcoincloud.net")
 		fmt.Printf("     Send to: %s\n", address)
 
-	case "teratestnet":
-		fmt.Println("Teranode STN — start a local node and use a faucet:")
-		fmt.Println()
-		fmt.Println("  1. Start STN node (if not running):")
-		fmt.Println("     make stn")
-		fmt.Println()
-		fmt.Println("  2. Get tBSV from faucet:")
-		fmt.Println("     https://faucet.teranode.bsvblockchain.org")
-		fmt.Printf("     Send to: %s\n", address)
-
 	default: // mainnet
 		uri := "bitcoin:" + address
 		fmt.Println("Scan QR code with a BSV wallet (HandCash, Sensilet, etc.):")
