@@ -1,3 +1,4 @@
+*.out
 bin/
 
 # Stray build artifacts in project root
