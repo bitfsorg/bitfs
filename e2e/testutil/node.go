@@ -10,17 +10,6 @@ import (
 	"time"
 )
 
-const (
-	// Default regtest node connection parameters (matches docker-compose.yml / bitcoin.conf).
-	defaultRPCURL  = "http://localhost:18332"
-	defaultRPCUser = "bitfs"
-	defaultRPCPass = "bitfs"
-)
-
-// RegtestUTXO is a backward-compatible alias for UTXO.
-// Deprecated: Use UTXO directly. Will be removed in a future cleanup.
-type RegtestUTXO = UTXO
-
 // TestNode is the unified interface for interacting with a BSV node across
 // regtest, testnet, and mainnet networks. All e2e test helpers should accept
 // TestNode rather than a concrete type.
@@ -67,14 +56,6 @@ type RegtestNode struct {
 	rpc *RPCClient
 }
 
-// NewRegtestNode creates a RegtestNode that connects to the local regtest
-// node at localhost:18332 with the default bitfs/bitfs credentials.
-func NewRegtestNode() *RegtestNode {
-	return &RegtestNode{
-		rpc: NewRPCClient(defaultRPCURL, defaultRPCUser, defaultRPCPass),
-	}
-}
-
 // NewTestNode creates a TestNode appropriate for the configured network.
 // It loads config from environment variables, selects regtest or live node,
 // and skips the test if the node is not available.
@@ -95,14 +76,6 @@ func NewTestNode(t *testing.T) TestNode {
 		t.Skipf("BSV %s node not available at %s", cfg.Network, cfg.RPCURL)
 	}
 	return node
-}
-
-// SkipIfUnavailable skips the current test if the regtest node is not reachable.
-func SkipIfUnavailable(t *testing.T, node *RegtestNode) {
-	t.Helper()
-	if !node.IsAvailable(context.Background()) {
-		t.Skip("BSV regtest node not available (start with: docker compose -f e2e/docker-compose.yml up -d)")
-	}
 }
 
 // --- TestNode interface implementation for RegtestNode ---
@@ -311,26 +284,3 @@ func (n *RegtestNode) ImportAddress(ctx context.Context, addr string) error {
 	return nil
 }
 
-// FundAddress is a convenience method that generates a fresh wallet address,
-// mines 101 blocks to it (making the coinbase spendable), and then returns
-// the first available UTXO. This is the typical setup for e2e tests that need
-// funded outputs.
-//
-// Deprecated: Use Fund() instead, which works across all networks.
-func (n *RegtestNode) FundAddress(ctx context.Context, addr string) (*UTXO, error) {
-	// Mine 101 blocks to make coinbase maturable (100 confirmations required).
-	_, err := n.MineBlocks(ctx, 101, addr)
-	if err != nil {
-		return nil, fmt.Errorf("mine 101 blocks to %s: %w", addr, err)
-	}
-
-	utxos, err := n.ListUnspent(ctx, addr)
-	if err != nil {
-		return nil, fmt.Errorf("list unspent for %s: %w", addr, err)
-	}
-	if len(utxos) == 0 {
-		return nil, fmt.Errorf("no UTXOs found for %s after mining 101 blocks", addr)
-	}
-
-	return &utxos[0], nil
-}
