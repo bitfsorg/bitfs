@@ -19,11 +19,10 @@ import (
 
 // setupFundedWallet creates a fresh HD wallet from a random 12-word mnemonic,
 // derives the first fee key (m/44'/236'/0'/0/0), funds its address via the
-// regtest node (mine 101 blocks + sendtoaddress + mine 1), and returns the
-// wallet ready for use.
+// test node, and returns the wallet ready for use.
 //
 // This helper is designed to be reused by Task 7+ tests.
-func setupFundedWallet(t *testing.T, ctx context.Context, node *testutil.RegtestNode) *wallet.Wallet {
+func setupFundedWallet(t *testing.T, ctx context.Context, node testutil.TestNode) *wallet.Wallet {
 	t.Helper()
 
 	// Generate a fresh mnemonic and wallet.
@@ -34,54 +33,35 @@ func setupFundedWallet(t *testing.T, ctx context.Context, node *testutil.Regtest
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, testutil.NetworkConfigFor(node.Network()))
 	require.NoError(t, err, "create wallet")
 
 	return w
 }
 
-// getFundedUTXO funds the given address via the regtest node and returns
-// a tx.UTXO ready for use in transaction building. It mines 101 blocks to
-// make coinbase spendable, sends 0.01 BSV to the address, and mines 1 more
-// block to confirm.
+// getFundedUTXO funds the given address via the test node and returns
+// a tx.UTXO ready for use in transaction building. It uses node.Fund which
+// handles mining on regtest or faucet/WIF on live networks.
 //
 // The returned UTXO has TxID (internal byte order), Vout, Amount (satoshis),
 // ScriptPubKey, and PrivateKey all populated.
 //
 // This helper is designed to be reused by Task 7+ tests.
-func getFundedUTXO(t *testing.T, ctx context.Context, node *testutil.RegtestNode, addr string, kp *wallet.KeyPair) *tx.UTXO {
+func getFundedUTXO(t *testing.T, ctx context.Context, node testutil.TestNode, addr string, kp *wallet.KeyPair) *tx.UTXO {
 	t.Helper()
 
 	// Import the address so the node can track UTXOs for it.
 	err := node.ImportAddress(ctx, addr)
 	require.NoError(t, err, "import address")
 
-	// Mine 101 blocks so coinbase rewards become spendable.
-	nodeAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate node address")
-	_, err = node.MineBlocks(ctx, 101, nodeAddr)
-	require.NoError(t, err, "mine 101 blocks")
+	// Fund the address (regtest: mines blocks, live: faucet/WIF).
+	fundedUTXO, err := node.Fund(ctx, addr, 0.01)
+	require.NoError(t, err, "fund address")
+	t.Logf("funded UTXO: %s:%d = %.8f BSV", fundedUTXO.TxID, fundedUTXO.Vout, fundedUTXO.Amount)
 
-	// Send 0.01 BSV to the derived address.
-	fundTxID, err := node.SendToAddress(ctx, addr, 0.01)
-	require.NoError(t, err, "send to address")
-	t.Logf("funding txid: %s", fundTxID)
-
-	// Mine 1 block to confirm the funding transaction.
-	_, err = node.MineBlocks(ctx, 1, nodeAddr)
-	require.NoError(t, err, "mine confirmation block")
-
-	// Retrieve the UTXO from the node.
-	utxos, err := node.ListUnspent(ctx, addr)
-	require.NoError(t, err, "list unspent")
-	require.NotEmpty(t, utxos, "should have at least one UTXO")
-
-	regtestUTXO := utxos[0]
-	t.Logf("funded UTXO: %s:%d = %.8f BSV", regtestUTXO.TxID, regtestUTXO.Vout, regtestUTXO.Amount)
-
-	// Convert the regtest UTXO to a tx.UTXO.
+	// Convert the UTXO to a tx.UTXO.
 	// Bitcoin txids are displayed in reverse byte order; decode and reverse.
-	txidBytes, err := hex.DecodeString(regtestUTXO.TxID)
+	txidBytes, err := hex.DecodeString(fundedUTXO.TxID)
 	require.NoError(t, err, "decode txid hex")
 	// Reverse to internal (little-endian) byte order.
 	for i, j := 0, len(txidBytes)-1; i < j; i, j = i+1, j-1 {
@@ -93,11 +73,11 @@ func getFundedUTXO(t *testing.T, ctx context.Context, node *testutil.RegtestNode
 	require.NoError(t, err, "build P2PKH script")
 
 	// Convert BTC amount to satoshis.
-	amountSat := uint64(regtestUTXO.Amount * 1e8)
+	amountSat := uint64(fundedUTXO.Amount * 1e8)
 
 	return &tx.UTXO{
 		TxID:         txidBytes,
-		Vout:         regtestUTXO.Vout,
+		Vout:         fundedUTXO.Vout,
 		Amount:       amountSat,
 		ScriptPubKey: scriptPubKey,
 		PrivateKey:   kp.PrivateKey,
@@ -108,8 +88,7 @@ func getFundedUTXO(t *testing.T, ctx context.Context, node *testutil.RegtestNode
 // broadcasts to regtest, mines a confirmation block, retrieves it from
 // the chain, and verifies the OP_RETURN output contains the MetaFlag.
 func TestMetanetRootTx(t *testing.T) {
-	node := testutil.NewRegtestNode()
-	testutil.SkipIfUnavailable(t, node)
+	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -132,7 +111,7 @@ func TestMetanetRootTx(t *testing.T) {
 	// ------------------------------------------------------------------
 	// Step 2: Fund the fee key address.
 	// ------------------------------------------------------------------
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, node.Network() == "mainnet")
 	require.NoError(t, err, "fee address from pubkey")
 	t.Logf("fee address: %s", feeAddr.AddressString)
 
@@ -170,12 +149,10 @@ func TestMetanetRootTx(t *testing.T) {
 	t.Logf("broadcast txid: %s", broadcastTxID)
 
 	// ------------------------------------------------------------------
-	// Step 6: Mine 1 block to confirm.
+	// Step 6: Wait for 1 confirmation (mines on regtest, polls on live).
 	// ------------------------------------------------------------------
-	nodeAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate node address for mining")
-	_, err = node.MineBlocks(ctx, 1, nodeAddr)
-	require.NoError(t, err, "mine confirmation block")
+	err = node.WaitForConfirmation(ctx, broadcastTxID, 1)
+	require.NoError(t, err, "wait for confirmation")
 
 	// ------------------------------------------------------------------
 	// Step 7: Retrieve the tx from chain via GetRawTransaction.
