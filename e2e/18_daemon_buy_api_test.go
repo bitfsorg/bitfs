@@ -187,8 +187,12 @@ func TestGetBuyInfo(t *testing.T) {
 		require.True(t, ok, "paid should be a boolean")
 		assert.False(t, paid, "paid should be false before purchase")
 
+		displayHash := capsuleHash
+		if len(displayHash) > 16 {
+			displayHash = displayHash[:16]
+		}
 		t.Logf("buy info: capsule_hash=%s..., price=%v, addr=%s, paid=%v",
-			capsuleHash[:16], totalPrice, paymentAddr, paid)
+			displayHash, totalPrice, paymentAddr, paid)
 	})
 
 	// Step 3: GET /_bitfs/buy/{unknown} for non-existent invoice returns 404.
