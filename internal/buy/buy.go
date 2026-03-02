@@ -131,7 +131,10 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("buyer: invalid file txid hex: %w", err)
 	}
-	computedHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	computedHash, err := method42.ComputeCapsuleHash(fileTxID, capsule)
+	if err != nil {
+		return nil, fmt.Errorf("buyer: compute capsule hash: %w", err)
+	}
 	if !bytes.Equal(computedHash, capsuleHash) {
 		return nil, fmt.Errorf("buyer: capsule hash mismatch: received capsule does not match expected hash")
 	}
@@ -145,22 +148,17 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 		}
 	}
 
-	// Compute total cost: HTLC amount + fee (total input - change).
+	// Compute total cost: sum of all UTXO inputs consumed by the funding tx.
 	var totalInput uint64
 	for _, u := range utxos {
 		totalInput += u.Amount
-	}
-	cost := totalInput // Conservative: total spent from wallet
-	if fundingResult.HTLCAmount < totalInput {
-		// Fee = totalInput - htlcAmount - changeAmount, but we report total spent.
-		cost = totalInput
 	}
 
 	return &BuyResult{
 		Capsule:      capsule,
 		CapsuleNonce: capsuleNonce,
 		HTLCTxID:     hex.EncodeToString(fundingResult.TxID),
-		CostSatoshis: cost,
+		CostSatoshis: totalInput,
 	}, nil
 }
 

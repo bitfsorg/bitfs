@@ -208,8 +208,11 @@ func runWalletInit(args []string) int {
 
 	// Ask if the user wants to fund the wallet now.
 	if promptYesNo("Fund wallet now?") {
-		code := runWalletFund([]string{"--datadir", *dataDir, "--password", pass})
+		fundArgs := []string{"--datadir", *dataDir, "--password", pass}
+		code := runWalletFund(fundArgs)
+		// Zero the password copy held in the args slice to avoid lingering in memory.
 		zeroString(&pass)
+		zeroString(&fundArgs[3])
 		return code
 	}
 	zeroString(&pass)
@@ -252,7 +255,15 @@ func runWalletShow(args []string) int {
 		return exitWalletError
 	}
 
-	w, err := wallet.NewWallet(seed, &wallet.MainNet)
+	// Load network from config file; default to mainnet if config is missing.
+	netCfg := &wallet.MainNet
+	if cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir)); cfgErr == nil {
+		if resolved, netErr := wallet.GetNetwork(cfg.Network); netErr == nil {
+			netCfg = resolved
+		}
+	}
+
+	w, err := wallet.NewWallet(seed, netCfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to load wallet: %v\n", err)
 		return exitWalletError
@@ -377,6 +388,7 @@ func runWalletBalance(args []string) int {
 
 	total := feeBalance + nodeBalance
 	fmt.Printf("Wallet Balance\n")
+	fmt.Printf("  Network:          %s\n", eng.Wallet.Network().Name)
 	fmt.Printf("  Fee (spendable):  %s sats  (%d UTXOs)\n", formatSats(feeBalance), feeCount)
 	fmt.Printf("  Node (locked):    %s sats  (%d UTXOs)\n", formatSats(nodeBalance), nodeCount)
 	fmt.Printf("  Total:            %s sats\n", formatSats(total))
@@ -430,7 +442,15 @@ func loadWalletFromDataDir(dataDir, password string) (*wallet.Wallet, *wallet.Wa
 		return nil, nil, fmt.Errorf("failed to decrypt wallet: %w", err)
 	}
 
-	w, err := wallet.NewWallet(seed, &wallet.MainNet)
+	// Load network from config file; default to mainnet if config is missing.
+	netCfg := &wallet.MainNet
+	if cfg, cfgErr := config.LoadConfig(config.ConfigPath(dataDir)); cfgErr == nil {
+		if resolved, netErr := wallet.GetNetwork(cfg.Network); netErr == nil {
+			netCfg = resolved
+		}
+	}
+
+	w, err := wallet.NewWallet(seed, netCfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create wallet: %w", err)
 	}

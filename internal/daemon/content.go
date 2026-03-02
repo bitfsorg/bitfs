@@ -102,7 +102,7 @@ func (d *Daemon) handleMeta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Resolve the path via the Metanet service.
-	node, err := d.metanet.GetNodeByPath(path)
+	node, err := d.getNodeByPath(r.Context(), path)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "Path not found")
@@ -127,7 +127,13 @@ func (d *Daemon) handleMeta(w http.ResponseWriter, r *http.Request) {
 		MimeType: node.MimeType,
 		FileSize: node.FileSize,
 	}
-	if len(node.KeyHash) > 0 {
+	if len(node.FileTxID) > 0 {
+		resp.TxID = hex.EncodeToString(node.FileTxID)
+	}
+	// Only expose key_hash for free content. Paid nodes reveal key_hash only
+	// after payment; private nodes never reveal it. This mirrors the access
+	// control in serveJSON (routes.go).
+	if node.Access == "free" && len(node.KeyHash) > 0 {
 		resp.KeyHash = hex.EncodeToString(node.KeyHash)
 	}
 	if node.PricePerKB > 0 {
@@ -153,6 +159,7 @@ type metaNodeResponse struct {
 	Path       string              `json:"path"`
 	Type       string              `json:"type"`
 	Access     string              `json:"access"`
+	TxID       string              `json:"txid,omitempty"`
 	MimeType   string              `json:"mime_type,omitempty"`
 	FileSize   uint64              `json:"file_size,omitempty"`
 	KeyHash    string              `json:"key_hash,omitempty"`
@@ -213,7 +220,7 @@ func (d *Daemon) handleVersions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Resolve the path via the Metanet service.
-	node, err := d.metanet.GetNodeByPath(path)
+	node, err := d.getNodeByPath(r.Context(), path)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "Path not found")

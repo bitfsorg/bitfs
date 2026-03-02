@@ -182,7 +182,8 @@ func TestHTLCScriptConstruction(t *testing.T) {
 	assert.Len(t, capsule, 32)
 
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr)
 	assert.Len(t, capsuleHash, 32)
 
 	// Build a mock seller address (20-byte hash)
@@ -456,7 +457,8 @@ func TestEndToEndPaymentFlow(t *testing.T) {
 	capsule, err := method42.ComputeCapsule(sellerKey.PrivateKey, sellerKey.PublicKey, buyerKey.PublicKey, encResult.KeyHash)
 	require.NoError(t, err)
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr)
 
 	// Create invoice
 	invoice := x402.NewInvoice(100, uint64(len(plaintext)), "1SellerAddr...", capsuleHash, 3600)

@@ -377,7 +377,8 @@ func TestFullLifecycle(t *testing.T) {
 		require.Len(t, sellerCapsule, 32)
 
 		fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid for e2e test
-		capsuleHash := method42.ComputeCapsuleHash(fileTxID, sellerCapsule)
+		capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, sellerCapsule)
+		require.NoError(t, chErr, "compute capsule hash")
 		expectedHasher := sha256.New()
 		expectedHasher.Write(fileTxID)
 		expectedHasher.Write(sellerCapsule)

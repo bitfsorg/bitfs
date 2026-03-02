@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 )
 
@@ -445,7 +446,7 @@ func TestNotFound_Exit2(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", srv.URL, makeURI("/nonexistent")}, &stdout, &stderr)
 
-	assert.Equal(t, 2, code, "not found should exit 2")
+	assert.Equal(t, buy.ExitNotFound, code, "not found should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "not found")
 	assert.Empty(t, stdout.String())
 }
@@ -488,7 +489,7 @@ func TestMissingURI_Exit6(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "missing URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "missing URI should exit 6")
 	assert.Contains(t, stderr.String(), "Usage:")
 	assert.Empty(t, stdout.String())
 }
@@ -497,7 +498,7 @@ func TestMissingURI_NilArgs(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run(nil, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "nil args should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "nil args should exit 6")
 	assert.Contains(t, stderr.String(), "Usage:")
 }
 
@@ -509,7 +510,7 @@ func TestInvalidURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"http://not-a-bitfs-uri"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "invalid URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "invalid URI should exit 6")
 	assert.Contains(t, stderr.String(), "btree:")
 	assert.Empty(t, stdout.String())
 }
@@ -518,7 +519,7 @@ func TestEmptyURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{""}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "empty URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "empty URI should exit 6")
 }
 
 // ---------------------------------------------------------------------------
@@ -589,7 +590,7 @@ func TestPaymailResolveFails(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bitfs://alice@example.com/docs"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "paymail resolve failure should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "paymail resolve failure should exit 6")
 	assert.Contains(t, stderr.String(), "btree:")
 	assert.Empty(t, stdout.String())
 }
@@ -598,7 +599,7 @@ func TestDNSLinkResolveFails(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bitfs://example.com/docs"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "dnslink resolve failure should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "dnslink resolve failure should exit 6")
 	assert.Contains(t, stderr.String(), "btree:")
 }
 
@@ -606,7 +607,7 @@ func TestPubKeyNoHost_RequiresHostFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{makeURI("/docs")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "--host")
 	assert.Empty(t, stdout.String())
 }
@@ -648,14 +649,14 @@ func TestUnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--unknown", makeURI("/")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 }
 
 func TestInvalidTimeout(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", "http://localhost:8080", "--timeout", "notaduration", makeURI("/")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "invalid timeout")
 }
 
@@ -852,5 +853,5 @@ func TestMalformedPaymailURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bitfs://@example.com/docs"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "missing alias should fail")
+	assert.Equal(t, buy.ExitUsageError, code, "missing alias should fail")
 }

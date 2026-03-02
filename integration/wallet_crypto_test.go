@@ -205,7 +205,8 @@ func testPaidAccessCapsuleFlow(t *testing.T, network *wallet.NetworkConfig) {
 
 		// Compute capsule_hash for HTLC verification
 		fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
-		capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+		capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+		assert.NoError(t, chErr)
 		assert.Len(t, capsuleHash, 32)
 
 		// 4. Buyer decrypts using capsule (obtained via HTLC)
@@ -216,7 +217,8 @@ func testPaidAccessCapsuleFlow(t *testing.T, network *wallet.NetworkConfig) {
 		assert.Equal(t, plaintext, decResult.Plaintext)
 
 		// Verify capsule hash matches
-		recomputedHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+		recomputedHash, chErr2 := method42.ComputeCapsuleHash(fileTxID, capsule)
+		assert.NoError(t, chErr2)
 		assert.Equal(t, capsuleHash, recomputedHash)
 	})
 }

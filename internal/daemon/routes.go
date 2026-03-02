@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 
+	"github.com/bitfsorg/bitfs/dashboard"
 	"github.com/bitfsorg/libbitfs-go/paymail"
 )
 
@@ -52,6 +54,21 @@ func (d *Daemon) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /_bitfs/dashboard/wallet", wrap(d.withAdminAuth(d.handleDashboardWallet)))
 	mux.HandleFunc("GET /_bitfs/dashboard/network", wrap(d.withAdminAuth(d.handleDashboardNetwork)))
 	mux.HandleFunc("GET /_bitfs/dashboard/logs", wrap(d.withAdminAuth(d.handleDashboardLogs)))
+
+	// Dashboard SPA static files (admin-protected).
+	// Serves the embedded React SPA at /_dashboard/.
+	dashFS, err := fs.Sub(dashboard.FS, "dist")
+	if err == nil {
+		fileServer := http.FileServer(http.FS(dashFS))
+		mux.HandleFunc("GET /_dashboard/", wrap(d.withAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Strip the /_dashboard/ prefix so the file server sees relative paths.
+			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/_dashboard")
+			if r.URL.Path == "" || r.URL.Path == "/" {
+				r.URL.Path = "/index.html"
+			}
+			fileServer.ServeHTTP(w, r)
+		})))
+	}
 
 	// Paymail/BSV Alias
 	mux.HandleFunc("GET /.well-known/bsvalias", wrap(d.handleBSVAlias))
@@ -197,7 +214,7 @@ func (d *Daemon) handleRootOrPath(w http.ResponseWriter, r *http.Request) {
 func (d *Daemon) serveWithContentNegotiation(w http.ResponseWriter, r *http.Request, path string) {
 	// If Metanet service is available, try to resolve the path
 	if d.metanet != nil {
-		node, err := d.metanet.GetNodeByPath(path)
+		node, err := d.getNodeByPath(r.Context(), path)
 		if err == nil {
 			// Check access control
 			if node.Access == "paid" && d.config.X402.Enabled {

@@ -163,7 +163,8 @@ func TestPaidPurchaseFlow(t *testing.T) {
 
 	// CapsuleHash = SHA256(fileTxID ‖ capsule) -- used to lock the HTLC.
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid for e2e test
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr, "compute capsule hash")
 	require.Len(t, capsuleHash, 32, "capsule hash should be 32 bytes")
 	t.Logf("capsuleHash: %x", capsuleHash[:16])
 
@@ -526,7 +527,8 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	require.Len(t, capsule, 32)
 
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid for e2e test
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr, "compute capsule hash")
 	require.Len(t, capsuleHash, 32)
 
 	// ------------------------------------------------------------------

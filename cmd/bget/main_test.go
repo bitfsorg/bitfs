@@ -213,7 +213,7 @@ func TestDirectory_ReturnsExit6(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", srv.URL, makeURI("/docs")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "directory should exit 6")
+	assert.Equal(t, buy.ExitNotFound, code, "directory should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "is a directory")
 	assert.Empty(t, stdout.String(), "nothing should be written to stdout for directories")
 }
@@ -268,7 +268,7 @@ func TestPaid_WithBuy_MissingWalletKey(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--buy", "--host", srv.URL, makeURI("/premium.pdf")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "--buy without --wallet-key should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "--buy without --wallet-key should exit with ExitUsageError")
 	assert.Contains(t, stderr.String(), "no wallet key configured")
 	assert.Empty(t, stdout.String())
 }
@@ -304,7 +304,7 @@ func TestPaid_WithBuy_InvalidWalletKey(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := run([]string{"--buy", "--wallet-key", tt.walletKey, "--utxo", fakeUTXO, "--host", srv.URL, makeURI("/premium.pdf")}, &stdout, &stderr)
 
-			assert.Equal(t, 6, code, "invalid wallet key should exit 6")
+			assert.Equal(t, buy.ExitUsageError, code, "invalid wallet key should exit with ExitUsageError")
 			assert.Contains(t, stderr.String(), tt.wantMsg)
 			assert.Empty(t, stdout.String())
 		})
@@ -361,7 +361,7 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -431,7 +431,7 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -519,7 +519,7 @@ func TestPrivate_ReturnsExit6(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", srv.URL, makeURI("/secret.key")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "private content should exit 6")
+	assert.Equal(t, buy.ExitPermError, code, "private content should exit with ExitPermError")
 	assert.Contains(t, stderr.String(), "private content cannot be accessed remotely")
 	assert.Empty(t, stdout.String())
 }
@@ -604,7 +604,7 @@ func TestVersionFlag_OutOfRange(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--version", "5", "--host", srv.URL, makeURI("/hello.txt")}, &stdout, &stderr)
 
-	assert.Equal(t, 2, code, "out-of-range version should exit 2")
+	assert.Equal(t, buy.ExitNotFound, code, "out-of-range version should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "version 5 not found")
 	assert.Contains(t, stderr.String(), "only 1 versions")
 }
@@ -670,7 +670,7 @@ func TestNotFoundError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", srv.URL, makeURI("/nonexistent")}, &stdout, &stderr)
 
-	assert.Equal(t, 2, code, "not found should exit 2")
+	assert.Equal(t, buy.ExitNotFound, code, "not found should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "not found")
 	assert.Empty(t, stdout.String())
 }
@@ -696,7 +696,7 @@ func TestMissingURIArgument(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "missing URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "missing URI should exit 6")
 	assert.Contains(t, stderr.String(), "Usage:")
 	assert.Empty(t, stdout.String())
 }
@@ -705,7 +705,7 @@ func TestMissingURIArgument_NilArgs(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run(nil, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "nil args should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "nil args should exit 6")
 	assert.Contains(t, stderr.String(), "Usage:")
 }
 
@@ -897,7 +897,7 @@ func TestDataEndpoint_NotFound(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"-o", outFile, "--host", srv.URL, makeURI("/missing-data.txt")}, &stdout, &stderr)
 
-	assert.Equal(t, 2, code, "data not found should exit 2")
+	assert.Equal(t, buy.ExitNotFound, code, "data not found should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "not found")
 }
 
@@ -909,7 +909,7 @@ func TestInvalidURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"http://not-a-bitfs-uri"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "invalid URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "invalid URI should exit 6")
 	assert.Contains(t, stderr.String(), "bget:")
 	assert.Empty(t, stdout.String())
 }
@@ -918,7 +918,7 @@ func TestEmptyURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{""}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "empty URI should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "empty URI should exit 6")
 }
 
 // ---------------------------------------------------------------------------
@@ -975,7 +975,7 @@ func TestPaymailResolveFails(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bitfs://alice@example.com/docs"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "paymail resolve failure should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "paymail resolve failure should exit 6")
 	assert.Contains(t, stderr.String(), "bget:")
 	assert.Empty(t, stdout.String())
 }
@@ -984,7 +984,7 @@ func TestDNSLinkResolveFails(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bitfs://example.com/docs"}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "dnslink resolve failure should exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "dnslink resolve failure should exit 6")
 	assert.Contains(t, stderr.String(), "bget:")
 }
 
@@ -992,7 +992,7 @@ func TestPubKeyNoHost_RequiresHostFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{makeURI("/docs")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "--host")
 	assert.Empty(t, stdout.String())
 }
@@ -1005,7 +1005,7 @@ func TestInvalidTimeout(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", "http://localhost:8080", "--timeout", "notaduration", makeURI("/")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "invalid timeout")
 }
 
@@ -1017,7 +1017,7 @@ func TestUnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--unknown", makeURI("/")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 }
 
 // ---------------------------------------------------------------------------
@@ -1163,13 +1163,13 @@ func TestDecryptFailure_NoPartialFile(t *testing.T) {
 func TestJSON_FlagParsing(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--json", "--host", "http://localhost:1"}, &stdout, &stderr)
-	assert.Equal(t, 6, code, "missing URI should still exit 6")
+	assert.Equal(t, buy.ExitUsageError, code, "missing URI should still exit 6")
 }
 
 func TestJSON_MissingURI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--json"}, &stdout, &stderr)
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 }
 
 func TestJSON_FreeContent_Success(t *testing.T) {
@@ -1299,14 +1299,14 @@ func TestJSON_NotFoundError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--json", "--host", srv.URL, makeURI("/nonexistent")}, &stdout, &stderr)
 
-	assert.Equal(t, 2, code, "not found should exit 2")
+	assert.Equal(t, buy.ExitNotFound, code, "not found should exit with ExitNotFound")
 
 	var resp buy.ErrorResponse
 	err := json.Unmarshal(stdout.Bytes(), &resp)
 	require.NoError(t, err, "stdout should be valid JSON: %s", stdout.String())
 
 	assert.Equal(t, "not found", resp.Error)
-	assert.Equal(t, 2, resp.Code)
+	assert.Equal(t, buy.ExitNotFound, resp.Code)
 }
 
 func TestJSON_DirectoryError(t *testing.T) {
@@ -1408,7 +1408,7 @@ func TestJSON_PaidContent_WithBuy_Success(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1473,7 +1473,7 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1737,7 +1737,7 @@ func TestPaid_WithBuy_DataFetchError(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1795,7 +1795,7 @@ func TestPaid_WithBuy_NoOutputFlag(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1865,7 +1865,7 @@ func TestPaid_WithBuy_DecryptFailure(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1924,7 +1924,7 @@ func TestJSON_PaidContent_WithBuy_DecryptFailure(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2018,7 +2018,7 @@ func TestPaid_WithBuy_InvalidPNodeKey(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2317,7 +2317,7 @@ func TestPaid_WithBuy_CreateFileError(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -2408,7 +2408,7 @@ func TestPaid_WithBuy_InvalidPNodeHex(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)

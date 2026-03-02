@@ -107,7 +107,7 @@ func TestEndpointToBaseURL(t *testing.T) {
 	}{
 		{"bare host:port", "example.com:8080", "https://example.com:8080"},
 		{"has https", "https://example.com", "https://example.com"},
-		{"has http", "http://example.com", "http://example.com"},
+		{"has http", "http://example.com", "https://example.com"},
 		{"bare host", "example.com", "https://example.com"},
 	}
 	for _, tt := range tests {

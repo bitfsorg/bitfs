@@ -101,9 +101,13 @@ func (d *Daemon) handleHandshake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate seller's nonce
+	// Generate seller's nonce. Use daemon's randReader if set (for testing). [Audit fix M-5]
 	nonceS := make([]byte, 32)
-	if _, err := cryptoRandRead(nonceS); err != nil {
+	readFn := cryptoRandRead
+	if d.randReader != nil {
+		readFn = d.randReader
+	}
+	if _, err := readFn(nonceS); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "NONCE_ERROR", "Failed to generate nonce")
 		return
 	}
@@ -168,7 +172,10 @@ func computeSessionKey(sharedX, nonceB, nonceS []byte) []byte {
 	return h.Sum(nil)
 }
 
-// cryptoRandRead is a variable for testing injection.
+// cryptoRandRead calls the daemon's randReader if set, otherwise
+// falls back to the package-level randRead.
+// Note: For testing, inject via Daemon.randReader field instead of
+// mutating this package-level variable. [Audit fix M-5]
 var cryptoRandRead = cryptoRandReadDefault
 
 func cryptoRandReadDefault(b []byte) (int, error) {

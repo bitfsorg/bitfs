@@ -49,7 +49,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	offline := fs.Bool("offline", false, "cache-only mode")
 
 	if err := fs.Parse(args); err != nil {
-		return 6
+		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
@@ -62,7 +62,7 @@ Examples:
   bmget --buy --wallet-key KEY bitfs://alice@example.com/data/ ./out/
   bmget --json --concurrency 8 bitfs://02abc.../dir/ --host http://localhost:8080
 `)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	uri := fs.Arg(0)
@@ -75,7 +75,7 @@ Examples:
 			return handleErrorJSON(fmt.Errorf("resolve URI: %w", err), stdout)
 		}
 		fmt.Fprintf(stderr, "bmget: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	c := resolved.Client
@@ -86,7 +86,7 @@ Examples:
 				return handleErrorJSON(fmt.Errorf("invalid timeout %q: %w", *timeout, err), stdout)
 			}
 			fmt.Fprintf(stderr, "bmget: invalid timeout %q: %v\n", *timeout, err)
-			return 6
+			return buy.ExitUsageError
 		}
 		c = c.WithTimeout(d)
 	}
@@ -122,7 +122,7 @@ Examples:
 			return handleErrorJSON(fmt.Errorf("not a directory: %s", uriPath), stdout)
 		}
 		fmt.Fprintf(stderr, "bmget: %s: not a directory\n", uriPath)
-		return 6
+		return buy.ExitNotFound
 	}
 
 	// Filter file entries from children, rejecting unsafe names.
@@ -182,7 +182,7 @@ Examples:
 				return handleErrorJSON(fmt.Errorf("buyer config: %w", err), stdout)
 			}
 			fmt.Fprintf(stderr, "bmget: %v\n", err)
-			return 6
+			return buy.ExitUsageError
 		}
 		buyerCfg = cfg
 	}
@@ -311,7 +311,7 @@ func downloadFile(mg client.MetaGetter, c *client.Client, pnode, remotePath, loc
 		}
 		return downloadPaidFile(c, meta, localPath, buyerCfg)
 	case "private":
-		return buy.BatchFileEntry{Error: "private content", Code: 6}
+		return buy.BatchFileEntry{Error: "private content", Code: buy.ExitPermError}
 	default:
 		return buy.BatchFileEntry{Error: fmt.Sprintf("unknown access mode %q", meta.Access), Code: 1}
 	}

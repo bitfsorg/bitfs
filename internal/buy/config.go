@@ -192,6 +192,10 @@ func BuildP2PKHScript(pkh []byte) []byte {
 // remainder is read as a file path and its contents (trimmed of leading/
 // trailing whitespace) are returned. This allows users to avoid exposing
 // private keys in process listings or shell history.
+//
+// If the value is a plaintext hex key (not a @filepath), a deprecation
+// warning is printed to stderr. Users should switch to @filepath or
+// the BITFS_WALLET_KEY environment variable.
 func resolveWalletKey(value string) (string, error) {
 	if strings.HasPrefix(value, "@") {
 		path := strings.TrimPrefix(value, "@")
@@ -208,6 +212,10 @@ func resolveWalletKey(value string) (string, error) {
 		}
 		return trimmed, nil
 	}
+	// Plaintext hex key on command line — warn about security risk.
+	// The key is visible in ps(1) output, shell history, and audit logs.
+	fmt.Fprintf(os.Stderr, "WARNING: passing private key as plaintext is insecure (visible in ps, shell history).\n")
+	fmt.Fprintf(os.Stderr, "  Use --wallet-key @filepath or set BITFS_WALLET_KEY env var instead.\n")
 	return value, nil
 }
 

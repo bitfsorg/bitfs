@@ -19,6 +19,27 @@ import (
 	"github.com/bitfsorg/libbitfs-go/x402"
 )
 
+// invoiceSnapshot holds a read-only snapshot of InvoiceRecord fields,
+// captured under invoicesMu to prevent data races when fields are read
+// outside the lock scope. [Audit fix C-1, H-5, M-1]
+type invoiceSnapshot struct {
+	ID           string
+	TotalPrice   uint64
+	CapsuleHash  string
+	PricePerKB   uint64
+	FileSize     uint64
+	PaymentAddr  string
+	SellerPubKey string
+	Paid         bool
+	CapsuleNonce []byte
+	HTLCScript   []byte
+	Capsule      []byte
+	Expiry       time.Time
+	NodePNode    []byte
+	KeyHash      []byte
+	FileTxID     []byte
+}
+
 // InvoiceRecord tracks a pending or completed content purchase.
 type InvoiceRecord struct {
 	ID           string    `json:"invoice_id"`
@@ -164,18 +185,19 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.invoicesMu.RLock()
-	invoice, ok := d.invoices[txid]
-	d.invoicesMu.RUnlock()
+	// Snapshot all needed fields under lock to prevent data race (C-1, H-5, M-1).
+	buyerPubHex := r.URL.Query().Get("buyer_pubkey")
 
+	d.invoicesMu.Lock()
+	invoice, ok := d.invoices[txid]
 	if !ok {
+		d.invoicesMu.Unlock()
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
 		return
 	}
 
-	// Check if the invoice has expired.
+	// Check if the invoice has expired (under lock to avoid TOCTOU — M-3).
 	if time.Now().After(invoice.Expiry) {
-		d.invoicesMu.Lock()
 		delete(d.invoices, txid)
 		d.invoicesMu.Unlock()
 		writeJSONError(w, http.StatusNotFound, "EXPIRED", "Invoice has expired")
@@ -183,36 +205,46 @@ func (d *Daemon) handleGetBuyInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compute capsule on demand when buyer provides their pubkey.
-	// Use write lock for the entire check-compute-set to prevent TOCTOU race.
-	buyerPubHex := r.URL.Query().Get("buyer_pubkey")
-	if buyerPubHex != "" && len(invoice.NodePNode) > 0 {
-		d.invoicesMu.Lock()
-		if len(invoice.Capsule) == 0 {
-			if capsuleErr := d.computeInvoiceCapsule(invoice, buyerPubHex); capsuleErr != nil {
-				d.invoicesMu.Unlock()
-				log.Printf("[buy] ERROR: capsule computation failed for invoice %s: %v", invoice.ID, capsuleErr)
-				writeJSONError(w, http.StatusInternalServerError, "CAPSULE_FAILED",
-					"Cannot compute payment capsule")
-				return
-			}
+	if buyerPubHex != "" && len(invoice.NodePNode) > 0 && len(invoice.Capsule) == 0 {
+		if capsuleErr := d.computeInvoiceCapsule(invoice, buyerPubHex); capsuleErr != nil {
+			d.invoicesMu.Unlock()
+			log.Printf("[buy] ERROR: capsule computation failed for invoice %s: %v", invoice.ID, capsuleErr)
+			writeJSONError(w, http.StatusInternalServerError, "CAPSULE_FAILED",
+				"Cannot compute payment capsule")
+			return
 		}
-		d.invoicesMu.Unlock()
 	}
+
+	// Snapshot all fields before releasing lock.
+	snap := invoiceSnapshot{
+		ID:           invoice.ID,
+		TotalPrice:   invoice.TotalPrice,
+		CapsuleHash:  invoice.CapsuleHash,
+		PricePerKB:   invoice.PricePerKB,
+		FileSize:     invoice.FileSize,
+		PaymentAddr:  invoice.PaymentAddr,
+		SellerPubKey: invoice.SellerPubKey,
+		Paid:         invoice.Paid,
+	}
+	if len(invoice.CapsuleNonce) > 0 {
+		snap.CapsuleNonce = make([]byte, len(invoice.CapsuleNonce))
+		copy(snap.CapsuleNonce, invoice.CapsuleNonce)
+	}
+	d.invoicesMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	buyInfoResp := map[string]interface{}{
-		"invoice_id":    invoice.ID,
-		"total_price":   invoice.TotalPrice,
-		"capsule_hash":  invoice.CapsuleHash,
-		"price_per_kb":  invoice.PricePerKB,
-		"file_size":     invoice.FileSize,
-		"payment_addr":  invoice.PaymentAddr,
-		"seller_pubkey": invoice.SellerPubKey,
-		"paid":          invoice.Paid,
+		"invoice_id":    snap.ID,
+		"total_price":   snap.TotalPrice,
+		"capsule_hash":  snap.CapsuleHash,
+		"price_per_kb":  snap.PricePerKB,
+		"file_size":     snap.FileSize,
+		"payment_addr":  snap.PaymentAddr,
+		"seller_pubkey": snap.SellerPubKey,
+		"paid":          snap.Paid,
 	}
-	// Include capsule nonce so the buyer can derive the matching buyer_mask for decryption.
-	if len(invoice.CapsuleNonce) > 0 {
-		buyInfoResp["capsule_nonce"] = hex.EncodeToString(invoice.CapsuleNonce)
+	if len(snap.CapsuleNonce) > 0 {
+		buyInfoResp["capsule_nonce"] = hex.EncodeToString(snap.CapsuleNonce)
 	}
 	_ = json.NewEncoder(w).Encode(buyInfoResp)
 }
@@ -243,7 +275,10 @@ func (d *Daemon) computeInvoiceCapsule(invoice *InvoiceRecord, buyerPubHex strin
 		return fmt.Errorf("compute capsule: %w", err)
 	}
 
-	capsuleHash := method42.ComputeCapsuleHash(invoice.FileTxID, capsule)
+	capsuleHash, err := method42.ComputeCapsuleHash(invoice.FileTxID, capsule)
+	if err != nil {
+		return fmt.Errorf("compute capsule hash: %w", err)
+	}
 
 	// Build HTLC script for payment verification.
 	sellerPriv, _, err := d.wallet.GetSellerKeyPair()
@@ -293,6 +328,7 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Single write lock for the entire check-verify-set sequence to prevent TOCTOU.
+	// Snapshot all needed fields under lock to prevent data race (C-1, H-5, H-8).
 	d.invoicesMu.Lock()
 	invoice, ok := d.invoices[txid]
 	if !ok {
@@ -313,17 +349,35 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 	}
 	// Mark paid immediately to prevent concurrent claims (optimistic lock).
 	invoice.Paid = true
+
+	// Snapshot fields needed for verification and response (outside lock).
+	snap := invoiceSnapshot{
+		ID:         invoice.ID,
+		TotalPrice: invoice.TotalPrice,
+		HTLCScript: make([]byte, len(invoice.HTLCScript)),
+	}
+	copy(snap.HTLCScript, invoice.HTLCScript)
+	if len(invoice.Capsule) > 0 {
+		snap.Capsule = make([]byte, len(invoice.Capsule))
+		copy(snap.Capsule, invoice.Capsule)
+	}
+	if len(invoice.CapsuleNonce) > 0 {
+		snap.CapsuleNonce = make([]byte, len(invoice.CapsuleNonce))
+		copy(snap.CapsuleNonce, invoice.CapsuleNonce)
+	}
 	d.invoicesMu.Unlock()
 
 	// Verify the payment transaction (outside lock — crypto/parsing is CPU-bound, not lock-worthy).
 	// On any failure below, rollback the Paid flag.
+	// Rollback uses a single lock acquisition covering both usedTxIDs and invoice.Paid
+	// to prevent inconsistent state windows (H-8).
 	rollbackPaid := func() {
 		d.invoicesMu.Lock()
 		invoice.Paid = false
 		d.invoicesMu.Unlock()
 	}
 
-	if len(invoice.HTLCScript) == 0 {
+	if len(snap.HTLCScript) == 0 {
 		rollbackPaid()
 		writeJSONError(w, http.StatusInternalServerError, "NO_HTLC_SCRIPT",
 			"Invoice missing HTLC script — cannot verify payment")
@@ -331,10 +385,11 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// HTLC path: verify the funding tx has a matching HTLC output.
-	if _, err := x402.VerifyHTLCFunding(htlcBody, invoice.HTLCScript, invoice.TotalPrice); err != nil {
+	if _, err := x402.VerifyHTLCFunding(htlcBody, snap.HTLCScript, snap.TotalPrice); err != nil {
 		rollbackPaid()
+		log.Printf("[buy] ERROR: HTLC verification failed for invoice %s: %v", snap.ID, err)
 		writeJSONError(w, http.StatusBadRequest, "PAYMENT_INVALID",
-			fmt.Sprintf("HTLC verification failed: %v", err))
+			"HTLC verification failed")
 		return
 	}
 
@@ -351,15 +406,17 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 	if existingInvoice, used := d.usedTxIDs[submittedTxID]; used {
 		d.usedTxIDsMu.Unlock()
 		rollbackPaid()
+		log.Printf("[buy] WARN: tx %s reused (original invoice %s, attempted invoice %s)", submittedTxID, existingInvoice, snap.ID)
 		writeJSONError(w, http.StatusConflict, "TX_REUSED",
-			fmt.Sprintf("Transaction already used for invoice %s", existingInvoice))
+			"Transaction already used for another invoice")
 		return
 	}
-	d.usedTxIDs[submittedTxID] = invoice.ID
+	d.usedTxIDs[submittedTxID] = snap.ID
 	d.usedTxIDsMu.Unlock()
 
 	// Broadcast the payment transaction to the blockchain before revealing capsule.
 	if d.chain == nil {
+		// Atomic rollback: both usedTxIDs and paid flag under their respective locks.
 		d.usedTxIDsMu.Lock()
 		delete(d.usedTxIDs, submittedTxID)
 		d.usedTxIDsMu.Unlock()
@@ -376,34 +433,38 @@ func (d *Daemon) handleSubmitHTLC(w http.ResponseWriter, r *http.Request) {
 		delete(d.usedTxIDs, submittedTxID)
 		d.usedTxIDsMu.Unlock()
 		rollbackPaid()
+		log.Printf("[buy] ERROR: broadcast failed for invoice %s: %v", snap.ID, broadcastErr)
 		writeJSONError(w, http.StatusBadRequest, "BROADCAST_FAILED",
-			fmt.Sprintf("Payment tx not accepted: %v", broadcastErr))
+			"Payment transaction rejected")
 		return
 	}
 
 	// After broadcast succeeds, payment is final regardless of HTTP response delivery.
 	// Do NOT rollback invoice.Paid after this point — the tx is on-chain.
 
-	// Return the capsule (ECDH shared secret).
-	if len(invoice.Capsule) == 0 {
+	// Persist paid invoice before sending response (crash recovery).
+	// Marshal invoice under lock (M-2).
+	d.invoicesMu.RLock()
+	_ = d.persistInvoice(invoice)
+	d.invoicesMu.RUnlock()
+
+	// Return the capsule (ECDH shared secret) using snapshotted values.
+	if len(snap.Capsule) == 0 {
 		// Payment is on-chain but capsule was never computed (server-side bug).
 		// Do NOT rollback paid or usedTxIDs; the payment already happened.
 		writeJSONError(w, http.StatusInternalServerError, "NO_CAPSULE", "No capsule computed for this invoice")
 		return
 	}
 
-	// Persist paid invoice before sending response (crash recovery).
-	_ = d.persistInvoice(invoice)
-
 	w.Header().Set("Content-Type", "application/json")
 	resp := map[string]interface{}{
-		"invoice_id": invoice.ID,
-		"capsule":    hex.EncodeToString(invoice.Capsule),
+		"invoice_id": snap.ID,
+		"capsule":    hex.EncodeToString(snap.Capsule),
 		"paid":       true,
 	}
 	// Include capsule nonce so the buyer can derive the matching buyer_mask.
-	if len(invoice.CapsuleNonce) > 0 {
-		resp["capsule_nonce"] = hex.EncodeToString(invoice.CapsuleNonce)
+	if len(snap.CapsuleNonce) > 0 {
+		resp["capsule_nonce"] = hex.EncodeToString(snap.CapsuleNonce)
 	}
 	_ = json.NewEncoder(w).Encode(resp)
 }
@@ -426,8 +487,7 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check invoice state under lock first (allows idempotent/expired responses
-	// regardless of body content).
+	// Check invoice state under lock first and snapshot needed fields (C-1, H-5, H-8).
 	d.invoicesMu.Lock()
 	invoice, ok := d.invoices[invoiceID]
 	if !ok {
@@ -459,6 +519,14 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 
 	// Mark paid immediately to prevent concurrent claims (optimistic lock).
 	invoice.Paid = true
+
+	// Snapshot all fields needed for verification outside lock.
+	paySnap := invoiceSnapshot{
+		ID:          invoice.ID,
+		TotalPrice:  invoice.TotalPrice,
+		PaymentAddr: invoice.PaymentAddr,
+		Expiry:      invoice.Expiry,
+	}
 	d.invoicesMu.Unlock()
 
 	// Parse body as JSON { "raw_tx": "<hex>" } or raw hex string.
@@ -486,17 +554,18 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify P2PKH payment to seller address.
+	// Verify P2PKH payment to seller address using snapshotted values.
 	proof := &x402.PaymentProof{RawTx: rawTx}
 	x402Inv := &x402.Invoice{
-		ID:          invoice.ID,
-		Price:       invoice.TotalPrice,
-		PaymentAddr: invoice.PaymentAddr,
-		Expiry:      invoice.Expiry.Unix(),
+		ID:          paySnap.ID,
+		Price:       paySnap.TotalPrice,
+		PaymentAddr: paySnap.PaymentAddr,
+		Expiry:      paySnap.Expiry.Unix(),
 	}
 	if _, err := x402.VerifyPayment(proof, x402Inv); err != nil {
 		rollbackPaid()
-		writeJSONError(w, http.StatusBadRequest, "VERIFICATION_FAILED", err.Error())
+		log.Printf("[pay] ERROR: payment verification failed for invoice %s: %v", paySnap.ID, err)
+		writeJSONError(w, http.StatusBadRequest, "VERIFICATION_FAILED", "Payment verification failed")
 		return
 	}
 
@@ -528,15 +597,19 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 			delete(d.usedTxIDs, submittedTxID)
 			d.usedTxIDsMu.Unlock()
 			rollbackPaid()
+			log.Printf("[pay] ERROR: broadcast failed for invoice %s: %v", paySnap.ID, broadcastErr)
 			writeJSONError(w, http.StatusBadRequest, "BROADCAST_FAILED",
-				fmt.Sprintf("Payment tx not accepted: %v", broadcastErr))
+				"Payment transaction rejected")
 			return
 		}
 	}
 
 	// After broadcast succeeds, payment is final regardless of HTTP response delivery.
 	// Do NOT rollback invoice.Paid after this point.
+	// Persist under read lock (M-2).
+	d.invoicesMu.RLock()
 	_ = d.persistInvoice(invoice)
+	d.invoicesMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{

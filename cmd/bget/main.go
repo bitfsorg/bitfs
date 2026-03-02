@@ -48,7 +48,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	offline := fs.Bool("offline", false, "cache-only mode")
 
 	if err := fs.Parse(args); err != nil {
-		return 6
+		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
@@ -59,14 +59,14 @@ Examples:
   bget bitfs://alice@example.com/docs/report.pdf      (paymail)
   bget bitfs://02abc...66chars.../docs/report.pdf     (pubkey, requires --host)
 `)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	uri := fs.Arg(0)
 	resolved, err := client.ResolveURI(uri, *host, nil, nil)
 	if err != nil {
 		fmt.Fprintf(stderr, "bget: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	c := resolved.Client
@@ -74,7 +74,7 @@ Examples:
 		d, err := time.ParseDuration(*timeout)
 		if err != nil {
 			fmt.Fprintf(stderr, "bget: invalid timeout %q: %v\n", *timeout, err)
-			return 6
+			return buy.ExitUsageError
 		}
 		c = c.WithTimeout(d)
 	}
@@ -116,7 +116,7 @@ Examples:
 				return handleErrorJSON(msg, stdout)
 			}
 			fmt.Fprintf(stderr, "bget: %v\n", msg)
-			return 2
+			return buy.ExitNotFound
 		}
 		v := vers[*version-1]
 		meta.TxID = v.TxID
@@ -130,7 +130,7 @@ Examples:
 			return handleErrorJSON(fmt.Errorf("is a directory"), stdout)
 		}
 		fmt.Fprintf(stderr, "bget: %s: is a directory\n", uriPath)
-		return 6
+		return buy.ExitNotFound
 	}
 
 	// SPV verification if requested.
@@ -161,7 +161,7 @@ Examples:
 			return handleErrorJSON(fmt.Errorf("private content"), stdout)
 		}
 		fmt.Fprintf(stderr, "bget: private content cannot be accessed remotely\n")
-		return 6
+		return buy.ExitPermError
 	default:
 		if *jsonOut {
 			return handleErrorJSON(fmt.Errorf("unknown access mode %q", meta.Access), stdout)
@@ -275,7 +275,7 @@ func handlePaid(c *client.Client, meta *client.MetaResponse, buyEnabled bool, wa
 			return handleErrorJSON(err, stdout)
 		}
 		fmt.Fprintf(stderr, "bget: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	result, err := buy.Buy(&buy.BuyParams{

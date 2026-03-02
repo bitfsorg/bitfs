@@ -58,10 +58,11 @@ const (
 
 // shellCtx holds mutable state shared between the REPL loop and command dispatch.
 type shellCtx struct {
-	eng      *vault.Vault
-	vaultIdx uint32
-	cwd      string
-	localCwd string
+	eng       *vault.Vault
+	vaultIdx  uint32
+	cwd       string
+	localCwd  string
+	daemonURL string // daemon URL for client commands (e.g. sales)
 }
 
 // shellExecCmd dispatches a single shell command and returns a shellAction.
@@ -477,8 +478,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			fmt.Println(result.Message)
 		}
 	case "sales":
-		daemonURL := "http://localhost:8080" // default daemon port
-		cl := client.New(daemonURL)
+		cl := client.New(ctx.daemonURL)
 		records, salesErr := cl.GetSales("all", 50)
 		if salesErr != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v (is daemon running?)\n", salesErr)
@@ -538,6 +538,12 @@ func runShell(args []string) int {
 		return exitNotFound
 	}
 
+	// Resolve daemon URL from config file; fall back to default :8080.
+	daemonURL := "http://localhost:8080"
+	if cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir)); cfgErr == nil && cfg.ListenAddr != "" {
+		daemonURL = "http://localhost" + cfg.ListenAddr
+	}
+
 	cwd := "/"
 	localCwd, _ := os.Getwd()
 
@@ -566,7 +572,7 @@ func runShell(args []string) int {
 
 	_, _ = fmt.Fprintf(rl.Stdout(), "BitFS Shell (vault %d). Type 'help' for commands, 'quit' to exit.\n", vaultIdx)
 
-	ctx := &shellCtx{eng: eng, vaultIdx: vaultIdx, cwd: cwd, localCwd: localCwd}
+	ctx := &shellCtx{eng: eng, vaultIdx: vaultIdx, cwd: cwd, localCwd: localCwd, daemonURL: daemonURL}
 
 	for {
 		line, err := rl.ReadLine()

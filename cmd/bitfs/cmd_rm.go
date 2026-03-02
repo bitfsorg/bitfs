@@ -17,6 +17,7 @@ import (
 func runRm(args []string) int {
 	fs := flag.NewFlagSet("rm", flag.ContinueOnError)
 	vaultName := fs.String("vault", "", "vault name")
+	jsonOut := fs.Bool("json", false, "JSON output")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 
@@ -25,7 +26,7 @@ func runRm(args []string) int {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: bitfs rm <remote-path> [--vault N]\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs rm <remote-path> [--vault N] [--json]\n")
 		return exitUsageError
 	}
 
@@ -33,12 +34,18 @@ func runRm(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("rm", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("rm", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
@@ -46,6 +53,9 @@ func runRm(args []string) int {
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("rm", exitNotFound, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitNotFound
 	}
@@ -55,8 +65,21 @@ func runRm(args []string) int {
 		Path:       remotePath,
 	})
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("rm", exitError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitError
+	}
+
+	if *jsonOut {
+		return writeJSONResult(&cmdResult{
+			OK:      true,
+			Command: "rm",
+			Message: result.Message,
+			TxID:    result.TxID,
+			TxHex:   result.TxHex,
+		})
 	}
 
 	fmt.Println(result.Message)

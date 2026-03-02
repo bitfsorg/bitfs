@@ -17,6 +17,7 @@ import (
 func runMv(args []string) int {
 	fs := flag.NewFlagSet("mv", flag.ContinueOnError)
 	vaultName := fs.String("vault", "", "vault name")
+	jsonOut := fs.Bool("json", false, "JSON output")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 
@@ -25,7 +26,7 @@ func runMv(args []string) int {
 	}
 
 	if fs.NArg() < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: bitfs mv <src> <dst> [--vault N]\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs mv <src> <dst> [--vault N] [--json]\n")
 		return exitUsageError
 	}
 
@@ -34,12 +35,18 @@ func runMv(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("mv", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("mv", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
@@ -47,6 +54,9 @@ func runMv(args []string) int {
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("mv", exitNotFound, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitNotFound
 	}
@@ -57,8 +67,21 @@ func runMv(args []string) int {
 		DstPath:    dst,
 	})
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("mv", exitError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitError
+	}
+
+	if *jsonOut {
+		return writeJSONResult(&cmdResult{
+			OK:      true,
+			Command: "mv",
+			Message: result.Message,
+			TxID:    result.TxID,
+			TxHex:   result.TxHex,
+		})
 	}
 
 	fmt.Println(result.Message)

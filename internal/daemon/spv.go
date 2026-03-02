@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -29,7 +30,8 @@ func (d *Daemon) handleSPVProof(w http.ResponseWriter, r *http.Request) {
 
 	result, err := d.spv.VerifyTx(r.Context(), txid)
 	if err != nil {
-		writeJSONError(w, http.StatusBadGateway, "SPV_ERROR", err.Error())
+		log.Printf("[spv] ERROR: verification failed for txid %s: %v", txid, err)
+		writeJSONError(w, http.StatusBadGateway, "SPV_ERROR", "SPV verification failed")
 		return
 	}
 

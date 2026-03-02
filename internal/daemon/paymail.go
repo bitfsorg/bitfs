@@ -53,7 +53,7 @@ func (d *Daemon) handlePKI(w http.ResponseWriter, r *http.Request) {
 	// Look up vault public key by alias
 	pubKeyHex, err := d.wallet.GetVaultPubKey(alias)
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "unknown alias: "+alias)
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "unknown alias")
 		return
 	}
 
@@ -79,7 +79,7 @@ func (d *Daemon) handlePublicProfile(w http.ResponseWriter, r *http.Request) {
 
 	// Verify alias exists by looking up the vault public key.
 	if _, err := d.wallet.GetVaultPubKey(alias); err != nil {
-		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "unknown alias: "+alias)
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "unknown alias")
 		return
 	}
 

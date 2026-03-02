@@ -562,7 +562,8 @@ func TestCapsuleHashBindsFileTxID(t *testing.T) {
 	require.NoError(t, err)
 
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr)
 
 	manual := sha256.New()
 	manual.Write(fileTxID)

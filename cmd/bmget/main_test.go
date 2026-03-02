@@ -72,14 +72,14 @@ func serveJSON(w http.ResponseWriter, v interface{}) {
 func TestRun_NoArgs(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{}, &stdout, &stderr)
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "Usage")
 }
 
 func TestRun_JSONFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--json"}, &stdout, &stderr)
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +104,7 @@ func TestRun_NotADirectory(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", srv.URL, makeURI("/readme.txt")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code, "file target should exit 6")
+	assert.Equal(t, buy.ExitNotFound, code, "file target should exit with ExitNotFound")
 	assert.Contains(t, stderr.String(), "not a directory")
 }
 
@@ -241,7 +241,7 @@ func TestRun_InvalidTimeout(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"--host", "http://localhost:8080", "--timeout", "notaduration", makeURI("/docs")}, &stdout, &stderr)
 
-	assert.Equal(t, 6, code)
+	assert.Equal(t, buy.ExitUsageError, code)
 	assert.Contains(t, stderr.String(), "invalid timeout")
 }
 
@@ -400,7 +400,7 @@ func TestDownloadFile_Private(t *testing.T) {
 	entry := downloadFile(c, c, testPubKey, "/secret.key", localPath, false, nil)
 
 	assert.Contains(t, entry.Error, "private content")
-	assert.Equal(t, 6, entry.Code)
+	assert.Equal(t, buy.ExitPermError, entry.Code)
 }
 
 // ---------------------------------------------------------------------------
@@ -549,12 +549,12 @@ func TestHandleErrorJSON(t *testing.T) {
 	testErr := client.ErrNotFound
 	code := handleErrorJSON(testErr, &stdout)
 
-	assert.Equal(t, 2, code, "not-found should map to exit code 2")
+	assert.Equal(t, buy.ExitNotFound, code, "not-found should map to ExitNotFound")
 
 	var errResp buy.ErrorResponse
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &errResp))
 	assert.Contains(t, errResp.Error, "not found")
-	assert.Equal(t, 2, errResp.Code)
+	assert.Equal(t, buy.ExitNotFound, errResp.Code)
 }
 
 func TestHandleErrorJSON_GenericError(t *testing.T) {
@@ -707,7 +707,7 @@ func TestRun_WithBuy_SinglePaidFile(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1037,7 +1037,7 @@ func TestRun_WithBuy_JSON_SinglePaidFile(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1134,7 +1134,7 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1220,7 +1220,7 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
@@ -1302,7 +1302,7 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 	require.NoError(t, err)
 	fileTxIDHex := strings.Repeat("ab", 32)
 	fileTxID, _ := hex.DecodeString(fileTxIDHex)
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, _ := method42.ComputeCapsuleHash(fileTxID, capsule)
 
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)

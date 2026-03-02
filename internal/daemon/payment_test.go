@@ -23,6 +23,15 @@ import (
 // This is the genesis block coinbase address.
 const testPaymentAddr = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
 
+// mustCalcPrice calls x402.CalculatePrice and panics on error (test helper).
+func mustCalcPrice(pricePerKB, fileSize uint64) uint64 {
+	p, err := x402.CalculatePrice(pricePerKB, fileSize)
+	if err != nil {
+		panic(fmt.Sprintf("mustCalcPrice(%d, %d): %v", pricePerKB, fileSize, err))
+	}
+	return p
+}
+
 // buildTestPaymentTx creates a serialized BSV transaction paying to the given
 // address with the specified amount.
 func buildTestPaymentTx(t *testing.T, addr string, satoshis uint64) []byte {
@@ -81,7 +90,7 @@ func TestServePaidContent_Returns402WithInvoice(t *testing.T) {
 	assert.NotEmpty(t, w.Header().Get("X-Expiry"), "X-Expiry header should be set by x402")
 
 	// Verify total price: ceil(50 * 10485760 / 1024) = 50 * 10240 = 512000
-	expectedTotal := x402.CalculatePrice(50, 10485760)
+	expectedTotal := mustCalcPrice(50, 10485760)
 	assert.Equal(t, fmt.Sprintf("%d", expectedTotal), w.Header().Get("X-Price"))
 
 	var resp map[string]interface{}
@@ -161,7 +170,7 @@ func TestServePaidContent_TotalPriceCalculation(t *testing.T) {
 	assert.Equal(t, http.StatusPaymentRequired, w.Code)
 
 	// Verify total price: ceil(100 * 2048 / 1024) = 200
-	expectedTotal := x402.CalculatePrice(100, 2048)
+	expectedTotal := mustCalcPrice(100, 2048)
 	assert.Equal(t, uint64(200), expectedTotal)
 	assert.Equal(t, fmt.Sprintf("%d", expectedTotal), w.Header().Get("X-Price"))
 
@@ -208,7 +217,7 @@ func TestHandleGetBuyInfo_Success(t *testing.T) {
 	d, _, _, _ := newTestDaemon(t)
 
 	// Create an invoice directly.
-	totalPrice := x402.CalculatePrice(100, 4096)
+	totalPrice := mustCalcPrice(100, 4096)
 	invoice := &InvoiceRecord{
 		ID:          "test-invoice-001",
 		TotalPrice:  totalPrice,
@@ -260,7 +269,7 @@ func TestHandleGetBuyInfo_Expired(t *testing.T) {
 	// Create an expired invoice.
 	invoice := &InvoiceRecord{
 		ID:          "expired-invoice",
-		TotalPrice:  x402.CalculatePrice(50, 1024),
+		TotalPrice:  mustCalcPrice(50, 1024),
 		PricePerKB:  50,
 		FileSize:    1024,
 		PaymentAddr: "1BitFSexpired",
@@ -293,7 +302,7 @@ func TestHandleSubmitHTLC_Success(t *testing.T) {
 	d.SetChain(&mockChainService{})
 
 	capsuleData := []byte("test-capsule-ecdh-secret-32bytes!")
-	totalPrice := x402.CalculatePrice(75, 2048)
+	totalPrice := mustCalcPrice(75, 2048)
 
 	// Create an invoice with a pre-computed capsule and real BSV address.
 	invoice := &InvoiceRecord{
@@ -359,7 +368,7 @@ func TestHandleSubmitHTLC_AlreadyPaid(t *testing.T) {
 	// Create an invoice that is already paid.
 	invoice := &InvoiceRecord{
 		ID:          "paid-invoice",
-		TotalPrice:  x402.CalculatePrice(50, 1024),
+		TotalPrice:  mustCalcPrice(50, 1024),
 		KeyHash:     keyHash,
 		PricePerKB:  50,
 		FileSize:    1024,
@@ -387,7 +396,7 @@ func TestHandleSubmitHTLC_Expired(t *testing.T) {
 	// Create an expired invoice.
 	invoice := &InvoiceRecord{
 		ID:          "expired-htlc",
-		TotalPrice:  x402.CalculatePrice(50, 1024),
+		TotalPrice:  mustCalcPrice(50, 1024),
 		KeyHash:     make([]byte, 32),
 		PricePerKB:  50,
 		FileSize:    1024,
@@ -413,7 +422,7 @@ func TestHandleSubmitHTLC_EmptyBody(t *testing.T) {
 
 	invoice := &InvoiceRecord{
 		ID:          "empty-body-invoice",
-		TotalPrice:  x402.CalculatePrice(50, 1024),
+		TotalPrice:  mustCalcPrice(50, 1024),
 		KeyHash:     make([]byte, 32),
 		PricePerKB:  50,
 		FileSize:    1024,
@@ -437,7 +446,7 @@ func TestHandleSubmitHTLC_NoCapsule(t *testing.T) {
 	d, _, _, _ := newTestDaemon(t)
 	d.SetChain(&mockChainService{})
 
-	totalPrice := x402.CalculatePrice(50, 1024)
+	totalPrice := mustCalcPrice(50, 1024)
 	// Create invoice with no capsule (e.g., node had no PNode).
 	invoice := &InvoiceRecord{
 		ID:          "no-capsule-invoice",
@@ -468,7 +477,7 @@ func TestHandleSubmitHTLC_NoCapsule(t *testing.T) {
 func TestHandleSubmitHTLC_InvalidTxBytes(t *testing.T) {
 	d, _, _, _ := newTestDaemon(t)
 
-	totalPrice := x402.CalculatePrice(50, 1024)
+	totalPrice := mustCalcPrice(50, 1024)
 	invoice := &InvoiceRecord{
 		ID:          "invalid-tx-invoice",
 		TotalPrice:  totalPrice,
@@ -502,7 +511,7 @@ func TestHandleSubmitHTLC_InsufficientPayment(t *testing.T) {
 	}
 	store.Put(hex.EncodeToString(keyHash), []byte("some-data"))
 
-	totalPrice := x402.CalculatePrice(100, 4096) // = 400
+	totalPrice := mustCalcPrice(100, 4096) // = 400
 
 	invoice := &InvoiceRecord{
 		ID:          "insufficient-invoice",
@@ -538,7 +547,7 @@ func TestHandleSubmitHTLC_WrongAddress(t *testing.T) {
 	}
 	store.Put(hex.EncodeToString(keyHash), []byte("data"))
 
-	totalPrice := x402.CalculatePrice(50, 1024)
+	totalPrice := mustCalcPrice(50, 1024)
 
 	invoice := &InvoiceRecord{
 		ID:          "wrong-addr-invoice",
@@ -682,7 +691,7 @@ func TestHandleSubmitHTLC_ConcurrentDoublePayment(t *testing.T) {
 	d.SetChain(&mockChainService{})
 
 	capsuleData := []byte("test-capsule-ecdh-secret-32bytes!")
-	totalPrice := x402.CalculatePrice(75, 2048)
+	totalPrice := mustCalcPrice(75, 2048)
 
 	invoice := &InvoiceRecord{
 		ID:          "race-invoice",

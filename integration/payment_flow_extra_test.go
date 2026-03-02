@@ -231,8 +231,10 @@ func TestCapsuleHashDeterminism(t *testing.T) {
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
 	capsule := bytes.Repeat([]byte{0x42}, 32)
 
-	hash1 := method42.ComputeCapsuleHash(fileTxID, capsule)
-	hash2 := method42.ComputeCapsuleHash(fileTxID, capsule)
+	hash1, err := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, err)
+	hash2, err := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, err)
 
 	assert.Equal(t, hash1, hash2,
 		"ComputeCapsuleHash should be deterministic for the same capsule input")
@@ -560,7 +562,8 @@ func TestEndToEndEncryptPayDecrypt(t *testing.T) {
 	capsule, err := method42.ComputeCapsule(sellerKey.PrivateKey, sellerKey.PublicKey, buyerKey.PublicKey, encResult.KeyHash)
 	require.NoError(t, err)
 	fileTxID := bytes.Repeat([]byte{0xf0}, 32) // mock file txid
-	capsuleHash := method42.ComputeCapsuleHash(fileTxID, capsule)
+	capsuleHash, chErr := method42.ComputeCapsuleHash(fileTxID, capsule)
+	require.NoError(t, chErr)
 
 	// Step 4: Create invoice.
 	invoice := x402.NewInvoice(50, uint64(len(plaintext)), "1SellerPaidAddr", capsuleHash, 3600)

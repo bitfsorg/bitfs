@@ -45,7 +45,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	offline := fs.Bool("offline", false, "cache-only mode")
 
 	if err := fs.Parse(args); err != nil {
-		return 6
+		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
@@ -56,14 +56,14 @@ Examples:
   bcat bitfs://alice@example.com/docs/readme.txt    (paymail)
   bcat bitfs://02abc...66chars.../docs/readme.txt   (pubkey, requires --host)
 `)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	uri := fs.Arg(0)
 	resolved, err := client.ResolveURI(uri, *host, nil, nil)
 	if err != nil {
 		fmt.Fprintf(stderr, "bcat: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	c := resolved.Client
@@ -71,7 +71,7 @@ Examples:
 		d, err := time.ParseDuration(*timeout)
 		if err != nil {
 			fmt.Fprintf(stderr, "bcat: invalid timeout %q: %v\n", *timeout, err)
-			return 6
+			return buy.ExitUsageError
 		}
 		c = c.WithTimeout(d)
 	}
@@ -96,7 +96,7 @@ Examples:
 	// Directories cannot be cat'd.
 	if meta.Type == "dir" {
 		fmt.Fprintf(stderr, "bcat: %s: is a directory\n", resolved.Path)
-		return 6
+		return buy.ExitNotFound
 	}
 
 	// SPV verification if requested.
@@ -127,7 +127,7 @@ Examples:
 			return handleErrorJSON(fmt.Errorf("private content"), stdout)
 		}
 		fmt.Fprintf(stderr, "bcat: private content cannot be accessed remotely\n")
-		return 6
+		return buy.ExitPermError
 	default:
 		if *jsonOut {
 			return handleErrorJSON(fmt.Errorf("unknown access mode %q", meta.Access), stdout)
@@ -214,7 +214,7 @@ func handlePaid(c *client.Client, meta *client.MetaResponse, buyEnabled bool, wa
 			return handleErrorJSON(err, stdout)
 		}
 		fmt.Fprintf(stderr, "bcat: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	result, err := buy.Buy(&buy.BuyParams{

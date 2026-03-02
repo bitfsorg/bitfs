@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -17,6 +18,7 @@ import (
 const cacheTTL = 500 * time.Millisecond
 
 type shellCompleter struct {
+	mu       sync.RWMutex // protects mutable fields from readline callback races [Audit fix M-11]
 	commands []string
 	state    *vault.LocalState
 	cwd      string // remote working directory (mutable, updated by shell loop)
@@ -32,6 +34,9 @@ type shellCompleter struct {
 // It parses the line up to pos to determine context, then dispatches
 // to the appropriate completion function.
 func (sc *shellCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
 	// Only complete up to cursor position.
 	lineStr := string(line[:pos])
 

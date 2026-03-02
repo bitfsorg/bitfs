@@ -12,18 +12,30 @@ import (
 	"github.com/bitfsorg/bitfs/internal/client"
 )
 
+// Standard exit codes (shared by bitfs and b-tools).
+const (
+	ExitSuccess     = 0
+	ExitError       = 1
+	ExitUsageError  = 2
+	ExitWalletError = 3
+	ExitNetError    = 4
+	ExitPermError   = 5
+	ExitNotFound    = 6
+	ExitConflict    = 7
+)
+
 // ExitCodeFromError maps a client error to a CLI exit code.
-// 0=success, 1=general, 2=not found, 4=network/timeout, 5=payment required, 6=usage.
+// 0=success, 1=general, 2=usage, 4=network/timeout, 5=payment/perm, 6=not found.
 func ExitCodeFromError(err error) int {
 	switch {
 	case errors.Is(err, client.ErrNotFound):
-		return 2
+		return ExitNotFound
 	case errors.Is(err, client.ErrTimeout), errors.Is(err, client.ErrNetwork), errors.Is(err, client.ErrServer):
-		return 4
+		return ExitNetError
 	case errors.Is(err, client.ErrPaymentRequired):
-		return 5
+		return ExitPermError
 	default:
-		return 1
+		return ExitError
 	}
 }
 

@@ -34,7 +34,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	offline := fs.Bool("offline", false, "cache-only mode")
 
 	if err := fs.Parse(args); err != nil {
-		return 6
+		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
@@ -45,14 +45,14 @@ Examples:
   bstat bitfs://alice@example.com/docs/readme.txt    (paymail)
   bstat bitfs://02abc...66chars.../docs/readme.txt   (pubkey, requires --host)
 `)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	uri := fs.Arg(0)
 	resolved, err := client.ResolveURI(uri, *host, nil, nil)
 	if err != nil {
 		fmt.Fprintf(stderr, "bstat: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	c := resolved.Client
@@ -60,7 +60,7 @@ Examples:
 		d, err := time.ParseDuration(*timeout)
 		if err != nil {
 			fmt.Fprintf(stderr, "bstat: invalid timeout %q: %v\n", *timeout, err)
-			return 6
+			return buy.ExitUsageError
 		}
 		c = c.WithTimeout(d)
 	}

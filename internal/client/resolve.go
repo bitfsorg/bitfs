@@ -68,11 +68,15 @@ func ResolveURI(uri, hostOverride string, httpClient paymail.HTTPClient, dnsReso
 	}, nil
 }
 
-// endpointToBaseURL prepends "https://" to an endpoint only if it does not
-// already have a scheme (L-NEW-21).
+// endpointToBaseURL prepends "https://" to an endpoint that has no scheme.
+// Explicit http:// endpoints are auto-upgraded to https:// to prevent
+// cleartext transmission of encryption material (capsules, public keys).
 func endpointToBaseURL(endpoint string) string {
-	if strings.HasPrefix(endpoint, "https://") || strings.HasPrefix(endpoint, "http://") {
+	if strings.HasPrefix(endpoint, "https://") {
 		return endpoint
+	}
+	if strings.HasPrefix(endpoint, "http://") {
+		return "https://" + strings.TrimPrefix(endpoint, "http://")
 	}
 	return "https://" + endpoint
 }

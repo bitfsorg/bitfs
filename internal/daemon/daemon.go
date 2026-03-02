@@ -53,9 +53,26 @@ type ContentStore interface {
 }
 
 // MetanetService defines the Metanet service interface needed by the daemon.
+// Implementations should support context-based cancellation. The Ctx variant
+// is preferred; the non-Ctx variant exists for backward compatibility.
 type MetanetService interface {
 	// GetNodeByPath resolves a filesystem path and returns the node.
 	GetNodeByPath(path string) (*NodeInfo, error)
+}
+
+// MetanetServiceCtx extends MetanetService with context-aware methods.
+// Daemon will use this interface if the implementation supports it.
+type MetanetServiceCtx interface {
+	MetanetService
+	GetNodeByPathCtx(ctx context.Context, path string) (*NodeInfo, error)
+}
+
+// getNodeByPath resolves a path via MetanetService, preferring context-aware variant.
+func (d *Daemon) getNodeByPath(ctx context.Context, path string) (*NodeInfo, error) {
+	if ctxSvc, ok := d.metanet.(MetanetServiceCtx); ok {
+		return ctxSvc.GetNodeByPathCtx(ctx, path)
+	}
+	return d.metanet.GetNodeByPath(path)
 }
 
 // SPVService defines the SPV verification interface needed by the daemon.
@@ -88,8 +105,8 @@ type NodeInfo struct {
 
 // ChildInfo holds simplified child entry information.
 type ChildInfo struct {
-	Name string
-	Type string
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // Config holds daemon configuration.
@@ -217,7 +234,7 @@ type Daemon struct {
 	chain   ChainService // optional; nil = skip broadcast
 	server  *http.Server
 	mux     *http.ServeMux
-	running bool
+	running bool       // INVARIANT: always accessed under d.mu [Audit L-1]
 	mu      sync.Mutex
 
 	// Session management
@@ -241,6 +258,10 @@ type Daemon struct {
 
 	// Invoice persistence directory (empty = disabled).
 	invoiceDir string
+
+	// randReader overrides the default crypto/rand source for nonce generation.
+	// If nil, crypto/rand.Reader is used. Set before Start for testing. [Audit fix M-5]
+	randReader func([]byte) (int, error)
 
 	// Dashboard support
 	startedAt  time.Time
@@ -296,12 +317,24 @@ func New(config *Config, wallet WalletService, store ContentStore, metanet Metan
 }
 
 // SetSPV attaches an SPV verification service. Must be called before Start.
+// Guarded by d.mu to prevent races with HTTP handlers reading d.spv. [Audit fix H-7]
 func (d *Daemon) SetSPV(spv SPVService) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.running {
+		panic("daemon: SetSPV called after Start")
+	}
 	d.spv = spv
 }
 
 // SetChain attaches a blockchain service for payment broadcast. Must be called before Start.
+// Guarded by d.mu to prevent races with HTTP handlers reading d.chain. [Audit fix H-7]
 func (d *Daemon) SetChain(c ChainService) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.running {
+		panic("daemon: SetChain called after Start")
+	}
 	d.chain = c
 }
 
@@ -370,6 +403,8 @@ func (d *Daemon) Start() error {
 }
 
 // Stop gracefully shuts down the daemon.
+// Shutdown the HTTP server first to drain in-flight handlers, then stop
+// background goroutines. [Audit fix M-4]
 func (d *Daemon) Stop(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -378,6 +413,10 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		return ErrNotRunning
 	}
 
+	// Drain in-flight HTTP handlers first.
+	err := d.server.Shutdown(ctx)
+
+	// Then stop background goroutines (they can no longer race with handlers).
 	if d.stopCleanup != nil {
 		close(d.stopCleanup)
 	}
@@ -385,7 +424,6 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		d.cancelEviction()
 	}
 
-	err := d.server.Shutdown(ctx)
 	d.running = false
 	return err
 }
@@ -456,7 +494,13 @@ func (d *Daemon) cleanupExpiredSessions() {
 }
 
 // SetInvoiceDir configures the directory for invoice persistence. Must be called before Start.
+// Guarded by d.mu to prevent races with persistInvoice. [Audit fix L-2]
 func (d *Daemon) SetInvoiceDir(dir string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.running {
+		panic("daemon: SetInvoiceDir called after Start")
+	}
 	d.invoiceDir = dir
 }
 

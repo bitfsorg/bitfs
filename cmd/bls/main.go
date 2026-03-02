@@ -37,7 +37,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	offline := fs.Bool("offline", false, "cache-only mode")
 
 	if err := fs.Parse(args); err != nil {
-		return 6
+		return buy.ExitUsageError
 	}
 
 	// -l is an alias for --long
@@ -53,14 +53,14 @@ Examples:
   bls bitfs://alice@example.com/docs/          (paymail)
   bls bitfs://02abc...66chars.../docs/         (pubkey, requires --host)
 `)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	uri := fs.Arg(0)
 	resolved, err := client.ResolveURI(uri, *host, nil, nil)
 	if err != nil {
 		fmt.Fprintf(stderr, "bls: %v\n", err)
-		return 6
+		return buy.ExitUsageError
 	}
 
 	c := resolved.Client
@@ -68,7 +68,7 @@ Examples:
 		d, err := time.ParseDuration(*timeout)
 		if err != nil {
 			fmt.Fprintf(stderr, "bls: invalid timeout %q: %v\n", *timeout, err)
-			return 6
+			return buy.ExitUsageError
 		}
 		c = c.WithTimeout(d)
 	}

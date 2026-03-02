@@ -23,7 +23,8 @@ import (
 func testCapsuleHash(txidHex, capsuleHex string) string {
 	txid, _ := hex.DecodeString(txidHex)
 	capsule, _ := hex.DecodeString(capsuleHex)
-	return hex.EncodeToString(method42.ComputeCapsuleHash(txid, capsule))
+	h, _ := method42.ComputeCapsuleHash(txid, capsule)
+	return hex.EncodeToString(h)
 }
 
 // testAddr returns a base58 P2PKH address from a 20-byte PKH (testnet).
@@ -236,7 +237,7 @@ func TestBuy_SuccessFlow(t *testing.T) {
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
 	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
-	capsuleHex := strings.Repeat("cc", 16)
+	capsuleHex := strings.Repeat("cc", 32)
 	nonceHex := strings.Repeat("dd", 16)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +280,7 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
 	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
-	capsuleHex := strings.Repeat("cc", 16)
+	capsuleHex := strings.Repeat("cc", 32)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
@@ -352,7 +353,7 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 	p2pkh := BuildP2PKHScript(buyerPKH)
 
 	txID := strings.Repeat("de", 32) // 32-byte txid (64 hex chars)
-	capsuleHex := strings.Repeat("cc", 16)
+	capsuleHex := strings.Repeat("cc", 32)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {

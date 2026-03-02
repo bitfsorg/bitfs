@@ -8,6 +8,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -91,6 +92,41 @@ func run(args []string) int {
 		printUsage()
 		return exitUsageError
 	}
+}
+
+// cmdResult is the JSON output for bitfs commands with --json.
+type cmdResult struct {
+	OK      bool   `json:"ok"`
+	Command string `json:"command"`
+	Message string `json:"message,omitempty"`
+	TxID    string `json:"txid,omitempty"`
+	TxHex   string `json:"tx_hex,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Code    int    `json:"code,omitempty"`
+}
+
+// writeJSONResult writes a JSON result to stdout and returns the exit code.
+func writeJSONResult(r *cmdResult) int {
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "json marshal: %v\n", err)
+		return exitError
+	}
+	fmt.Fprintln(os.Stdout, string(data))
+	if r.Error != "" {
+		return r.Code
+	}
+	return exitSuccess
+}
+
+// writeJSONErr writes a JSON error to stdout and returns the exit code.
+func writeJSONErr(command string, code int, err error) int {
+	return writeJSONResult(&cmdResult{
+		OK:      false,
+		Command: command,
+		Error:   err.Error(),
+		Code:    code,
+	})
 }
 
 func printUsage() {
