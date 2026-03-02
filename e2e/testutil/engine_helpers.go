@@ -16,9 +16,22 @@ import (
 	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 
+// NetworkConfigFor returns the wallet.NetworkConfig for the given network name.
+func NetworkConfigFor(network string) *wallet.NetworkConfig {
+	switch network {
+	case "mainnet":
+		return &wallet.MainNet
+	case "testnet":
+		return &wallet.TestNet
+	default:
+		return &wallet.RegTest
+	}
+}
+
 // SetupTestEngine creates a fully initialized Engine in a temporary directory
-// with a fresh HD wallet (random 12-word mnemonic, regtest network) and empty
-// state. The engine has no Chain configured (offline mode).
+// with a fresh HD wallet (random 12-word mnemonic) and empty state. The engine
+// has no Chain configured (offline mode). Uses the configured network from
+// BITFS_E2E_NETWORK environment variable (defaults to regtest).
 //
 // Returns the engine and the temporary data directory path. The caller does
 // not need to clean up the temp directory; t.TempDir() handles that.
@@ -26,6 +39,7 @@ func SetupTestEngine(t *testing.T) (*vault.Vault, string) {
 	t.Helper()
 
 	dataDir := t.TempDir()
+	cfg := LoadConfig()
 
 	// Generate a fresh mnemonic and create the wallet.
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
@@ -34,7 +48,7 @@ func SetupTestEngine(t *testing.T) (*vault.Vault, string) {
 	seed, err := wallet.SeedFromMnemonic(mnemonic, "")
 	require.NoError(t, err, "seed from mnemonic")
 
-	w, err := wallet.NewWallet(seed, &wallet.RegTest)
+	w, err := wallet.NewWallet(seed, NetworkConfigFor(cfg.Network))
 	require.NoError(t, err, "create wallet")
 
 	// Create an empty wallet state.
@@ -65,12 +79,10 @@ func SetupTestEngine(t *testing.T) (*vault.Vault, string) {
 	return eng, dataDir
 }
 
-// FundEngineWallet funds the engine's fee wallet via the regtest node. It
+// FundEngineWallet funds the engine's fee wallet via the given node. It
 // derives the first fee key (m/44'/236'/0'/0/0), imports its address into
-// the regtest node, mines 101 blocks to make coinbase spendable, sends
-// 0.01 BSV to the derived address, mines 1 confirmation block, and adds
-// the resulting UTXO to the engine's local state.
-func FundEngineWallet(t *testing.T, eng *vault.Vault, node *RegtestNode) {
+// the node, funds it, and adds the resulting UTXO to the engine's local state.
+func FundEngineWallet(t *testing.T, eng *vault.Vault, node TestNode) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -80,39 +92,22 @@ func FundEngineWallet(t *testing.T, eng *vault.Vault, node *RegtestNode) {
 	require.NoError(t, err, "derive fee key")
 
 	// Derive the BSV address from the public key.
-	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, false)
+	isMainnet := node.Network() == "mainnet"
+	feeAddr, err := script.NewAddressFromPublicKey(feeKey.PublicKey, isMainnet)
 	require.NoError(t, err, "address from pubkey")
 
-	// Import the address so the regtest node can track UTXOs for it.
+	// Import the address so the node can track UTXOs for it.
 	err = node.ImportAddress(ctx, feeAddr.AddressString)
 	require.NoError(t, err, "import address")
 
-	// Mine 101 blocks to make coinbase rewards spendable.
-	nodeAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate node mining address")
-	_, err = node.MineBlocks(ctx, 101, nodeAddr)
-	require.NoError(t, err, "mine 101 blocks")
-
-	// Send 0.01 BSV to the fee address.
-	fundTxID, err := node.SendToAddress(ctx, feeAddr.AddressString, 0.01)
-	require.NoError(t, err, "send 0.01 BSV to fee address")
-	t.Logf("funding txid: %s", fundTxID)
-
-	// Mine 1 block to confirm the funding transaction.
-	_, err = node.MineBlocks(ctx, 1, nodeAddr)
-	require.NoError(t, err, "mine confirmation block")
-
-	// Retrieve the confirmed UTXO.
-	utxos, err := node.ListUnspent(ctx, feeAddr.AddressString)
-	require.NoError(t, err, "list unspent")
-	require.NotEmpty(t, utxos, "should have at least one UTXO after funding")
-
-	regtestUTXO := utxos[0]
-	t.Logf("funded UTXO: %s:%d = %.8f BSV", regtestUTXO.TxID, regtestUTXO.Vout, regtestUTXO.Amount)
+	// Fund the address (regtest: mines blocks, live: faucet/WIF).
+	fundedUTXO, err := node.Fund(ctx, feeAddr.AddressString, 0.01)
+	require.NoError(t, err, "fund fee address")
+	t.Logf("funded UTXO: %s:%d = %.8f BSV", fundedUTXO.TxID, fundedUTXO.Vout, fundedUTXO.Amount)
 
 	// Convert display txid (big-endian) to internal byte order (little-endian)
 	// for consistency, then store as hex in engine state.
-	txidBytes, err := hex.DecodeString(regtestUTXO.TxID)
+	txidBytes, err := hex.DecodeString(fundedUTXO.TxID)
 	require.NoError(t, err, "decode txid hex")
 	for i, j := 0, len(txidBytes)-1; i < j; i, j = i+1, j-1 {
 		txidBytes[i], txidBytes[j] = txidBytes[j], txidBytes[i]
@@ -123,12 +118,12 @@ func FundEngineWallet(t *testing.T, eng *vault.Vault, node *RegtestNode) {
 	require.NoError(t, err, "build P2PKH script")
 
 	// Convert BTC amount to satoshis.
-	amountSat := uint64(regtestUTXO.Amount * 1e8)
+	amountSat := uint64(fundedUTXO.Amount * 1e8)
 
 	// Add the UTXO to the engine's local state.
 	eng.State.AddUTXO(&vault.UTXOState{
 		TxID:         hex.EncodeToString(txidBytes),
-		Vout:         regtestUTXO.Vout,
+		Vout:         fundedUTXO.Vout,
 		Amount:       amountSat,
 		ScriptPubKey: hex.EncodeToString(scriptPubKey),
 		PubKeyHex:    hex.EncodeToString(feeKey.PublicKey.Compressed()),
