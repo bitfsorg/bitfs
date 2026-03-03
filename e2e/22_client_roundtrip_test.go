@@ -12,14 +12,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- Mock SPV service for client roundtrip testing ---

@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bitfsorg/bitfs/e2e/testutil"
+	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/payment"
+	"github.com/bitfsorg/libbitfs-go/tx"
+	"github.com/bitfsorg/libbitfs-go/wallet"
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/e2e/testutil"
-	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/tx"
-	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // TestPaidPurchaseFlow exercises the full paid purchase flow:
@@ -572,10 +572,10 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	// Seller claim unlocking: <sig> <pubkey> <fileTxID||capsule> OP_TRUE
 	unlockScript := &script.Script{}
 	require.NoError(t, unlockScript.AppendPushData(bytes.Repeat([]byte{0x30}, 72))) // sig
-	require.NoError(t, unlockScript.AppendPushData(sellerPubKey.Compressed()))       // pubkey
-	claimPreimage := append(append([]byte{}, fileTxID...), capsule...)               // fileTxID || capsule
-	require.NoError(t, unlockScript.AppendPushData(claimPreimage))                   // preimage
-	require.NoError(t, unlockScript.AppendOpcodes(script.OpTRUE))                    // claim branch
+	require.NoError(t, unlockScript.AppendPushData(sellerPubKey.Compressed()))      // pubkey
+	claimPreimage := append(append([]byte{}, fileTxID...), capsule...)              // fileTxID || capsule
+	require.NoError(t, unlockScript.AppendPushData(claimPreimage))                  // preimage
+	require.NoError(t, unlockScript.AppendOpcodes(script.OpTRUE))                   // claim branch
 	claimTx.Inputs[0].UnlockingScript = unlockScript
 
 	extracted, err := payment.ParseHTLCPreimage(claimTx.Bytes(), nil)

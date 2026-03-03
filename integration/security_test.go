@@ -16,9 +16,9 @@ import (
 
 	"github.com/bitfsorg/libbitfs-go/metanet"
 	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/payment"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // --- TestWrongKeyDecryptionFails ---

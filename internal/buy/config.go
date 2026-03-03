@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bitfsorg/libbitfs-go/payment"
+	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 )
 
 // ErrNoBuyerConfig is returned when no wallet key is configured.
@@ -20,7 +20,7 @@ var ErrNoBuyerConfig = errors.New("buyer: no wallet key configured (set --wallet
 // BuyerConfig holds the buyer's wallet configuration.
 type BuyerConfig struct {
 	PrivKey     *ec.PrivateKey
-	Network     string           // mainnet|testnet|regtest
+	Network     string              // mainnet|testnet|regtest
 	ManualUTXOs []*payment.HTLCUTXO // Manually specified UTXOs (from --utxo flag)
 }
 

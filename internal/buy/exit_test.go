@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/bitfsorg/bitfs/internal/client"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExitCodeFromError(t *testing.T) {

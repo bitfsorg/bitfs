@@ -434,10 +434,10 @@ func TestParseOPReturnDataMalformed(t *testing.T) {
 
 func TestParseOPReturnDataWrongMetaFlag(t *testing.T) {
 	pushes := [][]byte{
-		[]byte("FAKE"),                      // wrong meta flag
-		bytes.Repeat([]byte{0x02}, 33),      // fake pubkey
-		bytes.Repeat([]byte{0x03}, 32),      // fake parentTxID
-		[]byte("payload"),                   // payload
+		[]byte("FAKE"),                 // wrong meta flag
+		bytes.Repeat([]byte{0x02}, 33), // fake pubkey
+		bytes.Repeat([]byte{0x03}, 32), // fake parentTxID
+		[]byte("payload"),              // payload
 	}
 	_, _, _, err := tx.ParseOPReturnData(pushes)
 	assert.Error(t, err, "wrong MetaFlag should produce an error")
@@ -795,13 +795,13 @@ func TestHeaderChainValid(t *testing.T) {
 	prevBlock := bytes.Repeat([]byte{0x00}, 32)
 	for i := 0; i < 5; i++ {
 		headers[i] = makeBlockHeader(
-			1,                                  // version
-			prevBlock,                          // prevBlock
-			bytes.Repeat([]byte{byte(i)}, 32),  // merkleRoot
-			uint32(1700000000+i*600),           // timestamp
-			0x2100ffff,                         // bits — easy PoW target for synthetic headers
-			uint32(i*1000),                     // nonce
-			uint32(100+i),                      // height
+			1,                                 // version
+			prevBlock,                         // prevBlock
+			bytes.Repeat([]byte{byte(i)}, 32), // merkleRoot
+			uint32(1700000000+i*600),          // timestamp
+			0x2100ffff,                        // bits — easy PoW target for synthetic headers
+			uint32(i*1000),                    // nonce
+			uint32(100+i),                     // height
 		)
 		prevBlock = headers[i].Hash
 	}

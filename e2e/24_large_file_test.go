@@ -9,14 +9,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
+	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLargeFileEncryptDecrypt generates 1MB of deterministic data, encrypts it

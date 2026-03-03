@@ -16,14 +16,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
-	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/payment"
+	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
+	"github.com/bsv-blockchain/go-sdk/script"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // testPubKey is a well-known compressed public key hex (33 bytes, prefix 02).
@@ -713,7 +713,10 @@ func TestRun_WithBuy_SinglePaidFile(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	var metaCalls int32
 	srv := newFullMockDaemon(t,
@@ -1044,7 +1047,10 @@ func TestRun_WithBuy_JSON_SinglePaidFile(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	var metaCalls int32
 	srv := newFullMockDaemon(t,
@@ -1142,7 +1148,10 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1228,7 +1237,10 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1312,7 +1324,10 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {

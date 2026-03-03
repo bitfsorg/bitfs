@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/internal/client"
 )
 
 func TestCatResponse_TextContent(t *testing.T) {

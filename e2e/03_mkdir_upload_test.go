@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bitfsorg/bitfs/e2e/testutil"
+	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/tx"
+	"github.com/bitfsorg/libbitfs-go/wallet"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/e2e/testutil"
-	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/tx"
-	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 
 // TestMkdirUpload builds a chain of three Metanet transactions:

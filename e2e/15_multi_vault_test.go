@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/wallet"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestVaultKeyIsolation verifies that different vaults derive completely
@@ -166,8 +166,8 @@ func TestVaultEncryptionIsolation(t *testing.T) {
 	// ------------------------------------------------------------------
 	_, err = method42.Decrypt(
 		enc0.Ciphertext,
-		kp1.PrivateKey,  // wrong private key (vault1)
-		kp0.PublicKey,   // vault0's public key
+		kp1.PrivateKey, // wrong private key (vault1)
+		kp0.PublicKey,  // vault0's public key
 		enc0.KeyHash,
 		method42.AccessPrivate,
 	)
@@ -181,8 +181,8 @@ func TestVaultEncryptionIsolation(t *testing.T) {
 	// ------------------------------------------------------------------
 	_, err = method42.Decrypt(
 		enc0.Ciphertext,
-		kp1.PrivateKey,  // vault1 private key
-		kp1.PublicKey,   // vault1 public key
+		kp1.PrivateKey, // vault1 private key
+		kp1.PublicKey,  // vault1 public key
 		enc0.KeyHash,
 		method42.AccessPrivate,
 	)
@@ -196,8 +196,8 @@ func TestVaultEncryptionIsolation(t *testing.T) {
 	// ------------------------------------------------------------------
 	_, err = method42.Decrypt(
 		enc0.Ciphertext,
-		kp0.PrivateKey,  // vault0 private key
-		kp1.PublicKey,   // wrong public key (vault1)
+		kp0.PrivateKey, // vault0 private key
+		kp1.PublicKey,  // wrong public key (vault1)
 		enc0.KeyHash,
 		method42.AccessPrivate,
 	)

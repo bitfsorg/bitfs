@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/tx"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/tx"
 )
 
 // TestFreeToPrivateTransition verifies the full Free -> Private encryption

@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/vault"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/tx"
+	"github.com/bitfsorg/libbitfs-go/vault"
 	"github.com/bitfsorg/libbitfs-go/wallet"
+	"github.com/bsv-blockchain/go-sdk/script"
+	"github.com/stretchr/testify/require"
 )
 
 // NetworkConfigFor returns the wallet.NetworkConfig for the given network name.

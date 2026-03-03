@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/payment"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
-	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // invoiceSnapshot holds a read-only snapshot of InvoiceRecord fields,

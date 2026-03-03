@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bitfsorg/libbitfs-go/payment"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/payment"
 )
 
 // testPaymentAddr is a well-known Bitcoin address used in tests.

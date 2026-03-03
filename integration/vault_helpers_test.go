@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bitfsorg/libbitfs-go/vault"
 	"github.com/bitfsorg/libbitfs-go/tx"
+	"github.com/bitfsorg/libbitfs-go/vault"
 	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 

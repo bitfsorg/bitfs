@@ -351,10 +351,10 @@ func TestNodeMetadataRoundTrip(t *testing.T) {
 
 	// Build OP_RETURN pushes
 	pushes := [][]byte{
-		{0x6d, 0x65, 0x74, 0x61},   // MetaFlag
-		original.PNode,               // P_node
-		original.ParentTxID,          // TxID_parent
-		payload,                      // Payload
+		{0x6d, 0x65, 0x74, 0x61}, // MetaFlag
+		original.PNode,           // P_node
+		original.ParentTxID,      // TxID_parent
+		payload,                  // Payload
 	}
 
 	// Parse back

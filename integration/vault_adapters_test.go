@@ -65,9 +65,9 @@ type testStoreAdapter struct {
 	v *vault.Vault
 }
 
-func (a *testStoreAdapter) Get(keyHash []byte) ([]byte, error)  { return a.v.Store.Get(keyHash) }
-func (a *testStoreAdapter) Has(keyHash []byte) (bool, error)    { return a.v.Store.Has(keyHash) }
-func (a *testStoreAdapter) Size(keyHash []byte) (int64, error)  { return a.v.Store.Size(keyHash) }
+func (a *testStoreAdapter) Get(keyHash []byte) ([]byte, error) { return a.v.Store.Get(keyHash) }
+func (a *testStoreAdapter) Has(keyHash []byte) (bool, error)   { return a.v.Store.Has(keyHash) }
+func (a *testStoreAdapter) Size(keyHash []byte) (int64, error) { return a.v.Store.Size(keyHash) }
 
 // testMetanetAdapter implements daemon.MetanetService for integration tests.
 type testMetanetAdapter struct {

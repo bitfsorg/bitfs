@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/libbitfs-go/network"
 	"github.com/bitfsorg/libbitfs-go/spv"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSPVVerify_RegtestMerkleProof performs a full SPV verification round-trip

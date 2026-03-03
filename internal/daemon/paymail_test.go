@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitfsorg/libbitfs-go/paymail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/paymail"
 )
 
 // --- handlePKI Tests ---

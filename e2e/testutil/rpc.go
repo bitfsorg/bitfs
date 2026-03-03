@@ -33,8 +33,8 @@ type rpcRequest struct {
 
 // rpcResponse is the JSON-RPC 1.0 response envelope.
 type rpcResponse struct {
-	ID     int64            `json:"id"`
-	Result json.RawMessage  `json:"result"`
+	ID     int64             `json:"id"`
+	Result json.RawMessage   `json:"result"`
 	Error  *rpcResponseError `json:"error"`
 }
 

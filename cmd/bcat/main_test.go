@@ -14,13 +14,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitfsorg/bitfs/internal/buy"
+	"github.com/bitfsorg/bitfs/internal/client"
+	"github.com/bitfsorg/libbitfs-go/method42"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/internal/buy"
-	"github.com/bitfsorg/bitfs/internal/client"
-	"github.com/bitfsorg/libbitfs-go/method42"
 )
 
 // testPubKey is a well-known compressed public key hex (33 bytes, prefix 02).
@@ -369,7 +369,10 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 	sellerPubKeyHex := nodePubHex
 
 	// Build a mock UTXO for the buyer (txid:vout:amount).
@@ -443,7 +446,10 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 	sellerPubKeyHex := nodePubHex
 
 	// Build a mock UTXO for the buyer (txid:vout:amount).
@@ -1229,17 +1235,20 @@ func newPaidTestSetup(t *testing.T, plaintext []byte) *paidTestSetup {
 
 	utxoTxID := strings.Repeat("ff", 32)
 	return &paidTestSetup{
-		NodePriv:        nodePriv,
-		BuyerPriv:       buyerPriv,
-		BuyerKeyHex:     hex.EncodeToString(buyerPriv.Serialize()),
-		Plaintext:       plaintext,
-		EncResult:       encResult,
-		Capsule:         capsule,
-		CapsuleHex:      hex.EncodeToString(capsule),
-		CapsuleHashHex:  hex.EncodeToString(capsuleHash),
-		KeyHashHex:      hex.EncodeToString(encResult.KeyHash),
-		NodePubHex:      hex.EncodeToString(nodePriv.PubKey().Compressed()),
-		SellerAddr:      func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }(),
+		NodePriv:       nodePriv,
+		BuyerPriv:      buyerPriv,
+		BuyerKeyHex:    hex.EncodeToString(buyerPriv.Serialize()),
+		Plaintext:      plaintext,
+		EncResult:      encResult,
+		Capsule:        capsule,
+		CapsuleHex:     hex.EncodeToString(capsule),
+		CapsuleHashHex: hex.EncodeToString(capsuleHash),
+		KeyHashHex:     hex.EncodeToString(encResult.KeyHash),
+		NodePubHex:     hex.EncodeToString(nodePriv.PubKey().Compressed()),
+		SellerAddr: func() string {
+			a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+			return a.AddressString
+		}(),
 		SellerPubKeyHex: hex.EncodeToString(nodePriv.PubKey().Compressed()),
 		UTXOFlag:        utxoTxID + ":0:100000",
 		FileTxIDHex:     fileTxIDHex,

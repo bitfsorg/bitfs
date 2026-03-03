@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/transaction"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/libbitfs-go/tx"
 	"github.com/bitfsorg/libbitfs-go/wallet"
+	"github.com/bsv-blockchain/go-sdk/script"
+	"github.com/bsv-blockchain/go-sdk/transaction"
+	"github.com/stretchr/testify/require"
 )
 
 // setupFundedWallet creates a fresh HD wallet from a random 12-word mnemonic,

@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
 	"github.com/bitfsorg/libbitfs-go/network"
 	"github.com/bitfsorg/libbitfs-go/payment"
+	"github.com/bsv-blockchain/go-sdk/script"
 )
 
 const defaultFeeRate = uint64(1) // 1 sat/byte

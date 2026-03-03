@@ -21,10 +21,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
+	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 )
 
 const maxContentSize = 1 << 30 // 1 GB

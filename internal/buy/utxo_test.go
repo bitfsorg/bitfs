@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitfsorg/libbitfs-go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/libbitfs-go/network"
 )
 
 func TestSelectUTXOs_SingleLargeUTXO(t *testing.T) {

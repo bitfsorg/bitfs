@@ -91,12 +91,12 @@ type SPVResult struct {
 // NodeInfo holds simplified node information for daemon use.
 type NodeInfo struct {
 	PNode      []byte      `json:"-"`
-	Type       string      `json:"type"`                      // "file", "dir", "link"
+	Type       string      `json:"type"` // "file", "dir", "link"
 	MimeType   string      `json:"mime_type,omitempty"`
 	FileSize   uint64      `json:"file_size,omitempty"`
 	KeyHash    []byte      `json:"-"`
-	FileTxID   []byte      `json:"-"`                         // 32-byte file transaction ID (binds capsule hash to file identity)
-	Access     string      `json:"access"`                    // "free", "paid", "private"
+	FileTxID   []byte      `json:"-"`      // 32-byte file transaction ID (binds capsule hash to file identity)
+	Access     string      `json:"access"` // "free", "paid", "private"
 	PricePerKB uint64      `json:"price_per_kb,omitempty"`
 	Children   []ChildInfo `json:"children,omitempty"`
 	Timestamp  uint64      `json:"-"`
@@ -234,7 +234,7 @@ type Daemon struct {
 	chain   ChainService // optional; nil = skip broadcast
 	server  *http.Server
 	mux     *http.ServeMux
-	running bool       // INVARIANT: always accessed under d.mu [Audit L-1]
+	running bool // INVARIANT: always accessed under d.mu [Audit L-1]
 	mu      sync.Mutex
 
 	// Session management

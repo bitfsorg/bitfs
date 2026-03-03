@@ -15,13 +15,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitfsorg/bitfs/internal/buy"
+	"github.com/bitfsorg/bitfs/internal/client"
+	"github.com/bitfsorg/libbitfs-go/method42"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/internal/buy"
-	"github.com/bitfsorg/bitfs/internal/client"
-	"github.com/bitfsorg/libbitfs-go/method42"
 )
 
 // testPubKey is a well-known compressed public key hex (33 bytes, prefix 02).
@@ -367,7 +367,10 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	// Use the node's pubkey hash as seller address.
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 	sellerPubKeyHex := nodePubHex
 
 	srv := newFullMockDaemon(t,
@@ -439,7 +442,10 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 	capsuleHex := hex.EncodeToString(capsule)
 	// Use the node's pubkey as PNode and seller address.
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 	sellerPubKeyHex := nodePubHex
 
 	tmpDir := t.TempDir()
@@ -1416,7 +1422,10 @@ func TestJSON_PaidContent_WithBuy_Success(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	tmpDir := t.TempDir()
 	outFile := filepath.Join(tmpDir, "paid.txt")
@@ -1482,7 +1491,10 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	tmpDir := t.TempDir()
 	outFile := filepath.Join(tmpDir, "paid.txt")
@@ -1747,7 +1759,10 @@ func TestPaid_WithBuy_DataFetchError(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1806,7 +1821,10 @@ func TestPaid_WithBuy_NoOutputFlag(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -1877,7 +1895,10 @@ func TestPaid_WithBuy_DecryptFailure(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	tmpDir := t.TempDir()
 	outFile := filepath.Join(tmpDir, "paid.txt")
@@ -1937,7 +1958,10 @@ func TestJSON_PaidContent_WithBuy_DecryptFailure(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	tmpDir := t.TempDir()
 	outFile := filepath.Join(tmpDir, "paid.txt")
@@ -2032,7 +2056,10 @@ func TestPaid_WithBuy_InvalidPNodeKey(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	// Use valid hex that is 33 bytes but not a valid compressed pubkey.
 	badPNodeHex := "02" + strings.Repeat("ff", 32) // valid hex, invalid EC point
@@ -2332,7 +2359,10 @@ func TestPaid_WithBuy_CreateFileError(t *testing.T) {
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 
 	srv := newFullMockDaemon(t,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -2423,7 +2453,10 @@ func TestPaid_WithBuy_InvalidPNodeHex(t *testing.T) {
 	keyHashHex := hex.EncodeToString(encResult.KeyHash)
 	capsuleHashHex := hex.EncodeToString(capsuleHash)
 	capsuleHex := hex.EncodeToString(capsule)
-	sellerAddr := func() string { a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false); return a.AddressString }()
+	sellerAddr := func() string {
+		a, _ := script.NewAddressFromPublicKey(nodePriv.PubKey(), false)
+		return a.AddressString
+	}()
 	nodePubHex := hex.EncodeToString(nodePriv.PubKey().Compressed())
 
 	tmpDir := t.TempDir()

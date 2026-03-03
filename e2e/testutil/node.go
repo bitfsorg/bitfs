@@ -283,4 +283,3 @@ func (n *RegtestNode) ImportAddress(ctx context.Context, addr string) error {
 	}
 	return nil
 }
-

@@ -12,14 +12,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/bitfsorg/bitfs/e2e/testutil"
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
+	"github.com/bitfsorg/libbitfs-go/payment"
 	"github.com/bitfsorg/libbitfs-go/storage"
 	"github.com/bitfsorg/libbitfs-go/wallet"
-	"github.com/bitfsorg/libbitfs-go/payment"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupBuyServer creates a daemon httptest.Server configured for buy-API testing.
@@ -84,7 +84,7 @@ func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.E
 
 	config := daemon.DefaultConfig()
 	config.Security.RateLimit.RPM = 0 // disable rate limiting for tests
-	config.X402.Enabled = true         // enable payment so paid paths return 402
+	config.X402.Enabled = true        // enable payment so paid paths return 402
 
 	d, err := daemon.New(config, walletSvc, fileStore, metanetSvc)
 	require.NoError(t, err, "create daemon")

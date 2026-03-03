@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bitfsorg/bitfs/e2e/testutil"
+	"github.com/bitfsorg/libbitfs-go/tx"
+	"github.com/bitfsorg/libbitfs-go/wallet"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/bitfsorg/bitfs/e2e/testutil"
-	"github.com/bitfsorg/libbitfs-go/tx"
-	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 
 // TestRemoveFile validates removing a file entry from a directory by publishing

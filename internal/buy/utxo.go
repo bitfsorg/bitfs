@@ -32,7 +32,7 @@ const htlcScriptSizeEstimate = 200
 func EstimateHTLCFee(nInputs int, feeRate uint64) uint64 {
 	inputSize := uint64(nInputs * 148)
 	htlcOutput := uint64(8 + 1 + htlcScriptSizeEstimate) // satoshis + varint + script
-	changeOutput := uint64(34)                             // P2PKH
+	changeOutput := uint64(34)                           // P2PKH
 	overhead := uint64(10)
 	return (inputSize + htlcOutput + changeOutput + overhead) * feeRate
 }
