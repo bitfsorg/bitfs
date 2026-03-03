@@ -31,7 +31,7 @@ func (d *Daemon) handleSPVProof(w http.ResponseWriter, r *http.Request) {
 	result, err := d.spv.VerifyTx(r.Context(), txid)
 	if err != nil {
 		log.Printf("[spv] ERROR: verification failed for txid %s: %v", txid, err)
-		writeJSONError(w, http.StatusBadGateway, "SPV_ERROR", "SPV verification failed")
+		writeJSONError(w, http.StatusBadGateway, "SPV_ERROR", err.Error())
 		return
 	}
 
