@@ -90,17 +90,17 @@ type SPVResult struct {
 
 // NodeInfo holds simplified node information for daemon use.
 type NodeInfo struct {
-	PNode      []byte
-	Type       string // "file", "dir", "link"
-	MimeType   string
-	FileSize   uint64
-	KeyHash    []byte
-	FileTxID   []byte // 32-byte file transaction ID (binds capsule hash to file identity)
-	Access     string // "free", "paid", "private"
-	PricePerKB uint64
-	Children   []ChildInfo
-	Timestamp  uint64
-	Domain     string
+	PNode      []byte      `json:"-"`
+	Type       string      `json:"type"`                      // "file", "dir", "link"
+	MimeType   string      `json:"mime_type,omitempty"`
+	FileSize   uint64      `json:"file_size,omitempty"`
+	KeyHash    []byte      `json:"-"`
+	FileTxID   []byte      `json:"-"`                         // 32-byte file transaction ID (binds capsule hash to file identity)
+	Access     string      `json:"access"`                    // "free", "paid", "private"
+	PricePerKB uint64      `json:"price_per_kb,omitempty"`
+	Children   []ChildInfo `json:"children,omitempty"`
+	Timestamp  uint64      `json:"-"`
+	Domain     string      `json:"-"`
 }
 
 // ChildInfo holds simplified child entry information.
