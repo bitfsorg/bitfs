@@ -64,7 +64,7 @@ type BuyInfo struct {
 	PaymentAddr  string `json:"payment_addr"`
 	SellerPubKey string `json:"seller_pubkey"`           // Hex-encoded compressed seller pubkey
 	CapsuleNonce string `json:"capsule_nonce,omitempty"` // Hex-encoded per-invoice nonce for capsule unlinkability
-	InvoiceID    string `json:"invoice_id,omitempty"`    // Hex-encoded 16-byte invoice ID for HTLC replay protection
+	InvoiceID    string `json:"invoice_id"`              // Hex-encoded 16-byte invoice ID for HTLC replay protection (mandatory)
 }
 
 // CapsuleResponse holds the re-encryption capsule returned after HTLC payment.

@@ -400,6 +400,7 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: sellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -476,6 +477,7 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: sellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1273,6 +1275,7 @@ func paidMockDaemon(t *testing.T, s *paidTestSetup, mimeType string) *httptest.S
 					Price:        1000,
 					PaymentAddr:  s.SellerAddr,
 					SellerPubKey: s.SellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1386,6 +1389,7 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  s.SellerAddr,
 					SellerPubKey: s.SellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1632,6 +1636,7 @@ func TestPaid_WithBuy_MissingKeyHash(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  s.SellerAddr,
 					SellerPubKey: s.SellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1679,6 +1684,7 @@ func TestPaid_WithBuy_DataFetchError_NonJSON(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  s.SellerAddr,
 					SellerPubKey: s.SellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}

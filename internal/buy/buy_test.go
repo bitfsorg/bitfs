@@ -171,6 +171,28 @@ func TestBuy_InvalidSellerPubKeyHex(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid seller pubkey hex")
 }
 
+func TestBuy_MissingInvoiceID(t *testing.T) {
+	pkhBytes, _ := hex.DecodeString(strings.Repeat("aa", 20))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(client.BuyInfo{
+			CapsuleHash:  strings.Repeat("aa", 32),
+			Price:        100,
+			PaymentAddr:  testAddr(pkhBytes),
+			SellerPubKey: strings.Repeat("bb", 33),
+			// InvoiceID intentionally omitted
+		})
+	}))
+	defer srv.Close()
+
+	_, err := Buy(&BuyParams{
+		Client: client.New(srv.URL),
+		TxID:   strings.Repeat("de", 32),
+		Config: &BuyerConfig{PrivKey: testPrivKey(t)},
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "server did not provide invoice ID")
+}
+
 func TestBuy_ResolveUTXOsError(t *testing.T) {
 	pkhBytes, _ := hex.DecodeString(strings.Repeat("aa", 20))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,6 +201,7 @@ func TestBuy_ResolveUTXOsError(t *testing.T) {
 			Price:        100,
 			PaymentAddr:  testAddr(pkhBytes),
 			SellerPubKey: strings.Repeat("bb", 33),
+			InvoiceID:    strings.Repeat("ff", 16),
 		})
 	}))
 	defer srv.Close()
@@ -209,6 +232,7 @@ func TestBuy_SubmitHTLCError(t *testing.T) {
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
+				InvoiceID:    strings.Repeat("ff", 16),
 			})
 		} else {
 			// SubmitHTLC — return server error
@@ -247,6 +271,7 @@ func TestBuy_SuccessFlow(t *testing.T) {
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
+				InvoiceID:    strings.Repeat("ff", 16),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{
@@ -289,6 +314,7 @@ func TestBuy_SuccessWithoutNonce(t *testing.T) {
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
+				InvoiceID:    strings.Repeat("ff", 16),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{
@@ -324,6 +350,7 @@ func TestBuy_InvalidCapsuleHexInResponse(t *testing.T) {
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
+				InvoiceID:    strings.Repeat("ff", 16),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{
@@ -362,6 +389,7 @@ func TestBuy_InvalidNonceHexInResponse(t *testing.T) {
 				Price:        100,
 				PaymentAddr:  testPubKeyAddr(pk.PubKey()),
 				SellerPubKey: hex.EncodeToString(pk.PubKey().Compressed()),
+				InvoiceID:    strings.Repeat("ff", 16),
 			})
 		} else {
 			json.NewEncoder(w).Encode(client.CapsuleResponse{

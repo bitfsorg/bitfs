@@ -394,6 +394,7 @@ func TestPaid_WithBuy_SubmitHTLCFails(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: sellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -471,6 +472,7 @@ func TestPaid_WithBuy_Success(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: sellerPubKeyHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1436,6 +1438,7 @@ func TestJSON_PaidContent_WithBuy_Success(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1499,6 +1502,7 @@ func TestJSON_PaidContent_WithBuy_DataFetchError(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1760,6 +1764,7 @@ func TestPaid_WithBuy_DataFetchError(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1820,6 +1825,7 @@ func TestPaid_WithBuy_NoOutputFlag(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1893,6 +1899,7 @@ func TestPaid_WithBuy_DecryptFailure(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1951,6 +1958,7 @@ func TestJSON_PaidContent_WithBuy_DecryptFailure(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -2048,6 +2056,7 @@ func TestPaid_WithBuy_InvalidPNodeKey(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -2342,6 +2351,7 @@ func TestPaid_WithBuy_CreateFileError(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -2435,6 +2445,7 @@ func TestPaid_WithBuy_InvalidPNodeHex(t *testing.T) {
 				serveJSON(w, client.BuyInfo{
 					CapsuleHash: capsuleHashHex, Price: 1000,
 					PaymentAddr: sellerAddr, SellerPubKey: nodePubHex,
+					InvoiceID: strings.Repeat("ff", 16),
 				})
 				return
 			}

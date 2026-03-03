@@ -79,13 +79,16 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 		return nil, fmt.Errorf("buyer: invalid seller pubkey hex: %w", err)
 	}
 
-	// Decode invoice ID if present (16 bytes, hex-encoded).
-	var invoiceID []byte
-	if buyInfo.InvoiceID != "" {
-		invoiceID, err = hex.DecodeString(buyInfo.InvoiceID)
-		if err != nil {
-			return nil, fmt.Errorf("buyer: invalid invoice ID hex: %w", err)
-		}
+	// Decode invoice ID (mandatory — required for HTLC replay protection).
+	if buyInfo.InvoiceID == "" {
+		return nil, fmt.Errorf("buyer: server did not provide invoice ID (required for HTLC)")
+	}
+	invoiceID, err := hex.DecodeString(buyInfo.InvoiceID)
+	if err != nil {
+		return nil, fmt.Errorf("buyer: invalid invoice ID hex: %w", err)
+	}
+	if len(invoiceID) != 16 {
+		return nil, fmt.Errorf("buyer: invoice ID must be 16 bytes, got %d", len(invoiceID))
 	}
 
 	// Step 2: Resolve UTXOs.

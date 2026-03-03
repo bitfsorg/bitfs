@@ -756,6 +756,7 @@ func TestRun_WithBuy_SinglePaidFile(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: nodePubHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1083,6 +1084,7 @@ func TestRun_WithBuy_JSON_SinglePaidFile(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: nodePubHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1166,6 +1168,7 @@ func TestDownloadFile_PaidWithBuy_Success(t *testing.T) {
 					Price:        500,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: nodePubHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1248,6 +1251,7 @@ func TestDownloadPaidFile_BuyFails(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: nodePubHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
@@ -1326,6 +1330,7 @@ func TestDownloadPaidFile_DataFetchFails(t *testing.T) {
 					Price:        1000,
 					PaymentAddr:  sellerAddr,
 					SellerPubKey: nodePubHex,
+					InvoiceID:    strings.Repeat("ff", 16),
 				})
 				return
 			}
