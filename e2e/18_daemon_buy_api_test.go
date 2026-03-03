@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -73,6 +74,7 @@ func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.E
 				PricePerKB: 100,
 				FileSize:   1024,
 				KeyHash:    encResult.KeyHash,
+				FileTxID:   bytes.Repeat([]byte{0xf0}, 32),
 				MimeType:   "text/plain",
 			},
 		},
@@ -124,16 +126,21 @@ func createInvoice(t *testing.T, serverURL string) (string, *payment.PaymentHead
 //  3. Verify all fields match the original 402 response headers.
 //  4. GET /_bitfs/buy/{unknown} returns 404 for non-existent invoice.
 func TestGetBuyInfo(t *testing.T) {
-	server, _, _ := setupBuyServer(t)
+	server, w, _ := setupBuyServer(t)
+
+	// Derive a buyer key to provide buyer_pubkey for capsule computation.
+	buyerKey, err := w.DeriveNodeKey(0, []uint32{99}, nil)
+	require.NoError(t, err, "derive buyer key")
+	buyerPubHex := hex.EncodeToString(buyerKey.PublicKey.Compressed())
 
 	// Step 1: Trigger invoice creation by accessing the paid path.
 	invoiceID, payHeaders := createInvoice(t, server.URL)
 	t.Logf("invoice created: id=%s, price=%d, pricePerKB=%d, fileSize=%d",
 		invoiceID, payHeaders.Price, payHeaders.PricePerKB, payHeaders.FileSize)
 
-	// Step 2: GET /_bitfs/buy/{invoiceID} to retrieve buy info.
+	// Step 2: GET /_bitfs/buy/{invoiceID}?buyer_pubkey=... to retrieve buy info with capsule.
 	t.Run("get_buy_info_success", func(t *testing.T) {
-		resp, err := http.Get(server.URL + "/_bitfs/buy/" + invoiceID)
+		resp, err := http.Get(server.URL + "/_bitfs/buy/" + invoiceID + "?buyer_pubkey=" + buyerPubHex)
 		require.NoError(t, err, "GET buy info")
 		defer resp.Body.Close()
 
@@ -218,11 +225,22 @@ func TestGetBuyInfo(t *testing.T) {
 //  2. Garbage (non-transaction) bytes return 400 PAYMENT_INVALID.
 //  3. Non-existent invoice returns 404 NOT_FOUND.
 func TestSubmitInvalidHTLC(t *testing.T) {
-	server, _, _ := setupBuyServer(t)
+	server, w, _ := setupBuyServer(t)
+
+	// Derive a buyer key for capsule computation.
+	buyerKey, err := w.DeriveNodeKey(0, []uint32{99}, nil)
+	require.NoError(t, err, "derive buyer key")
+	buyerPubHex := hex.EncodeToString(buyerKey.PublicKey.Compressed())
 
 	// Create an invoice first.
 	invoiceID, _ := createInvoice(t, server.URL)
 	t.Logf("invoice created for HTLC tests: id=%s", invoiceID)
+
+	// Trigger capsule/HTLC computation by calling GET with buyer_pubkey.
+	resp, err := http.Get(server.URL + "/_bitfs/buy/" + invoiceID + "?buyer_pubkey=" + buyerPubHex)
+	require.NoError(t, err, "GET buy info to trigger HTLC computation")
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, "buy info should return 200")
 
 	// Sub-test 1: Empty body.
 	t.Run("empty_body", func(t *testing.T) {

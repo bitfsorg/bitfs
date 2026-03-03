@@ -115,6 +115,7 @@ func createTestDaemon(t *testing.T) (*daemon.Daemon, *mockContentStore) {
 
 	config := daemon.DefaultConfig()
 	config.ListenAddr = ":0" // auto port
+	config.Security.CORS.Origins = []string{"*"}
 
 	d, err := daemon.New(config, walletSvc, contentStore, metanetSvc)
 	require.NoError(t, err)
@@ -191,7 +192,7 @@ func TestHTLCScriptConstruction(t *testing.T) {
 	// Build a mock seller address (20-byte hash)
 	sellerAddr := bytes.Repeat([]byte{0x11}, 20)
 
-	// 3. Build HTLC script (sCrypt-based artifact)
+	// 3. Build HTLC script (plain Bitcoin Script)
 	invoiceID := bytes.Repeat([]byte{0xdd}, payment.InvoiceIDLen)
 	sellerPubKey := sellerKey.PublicKey.Compressed()
 	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
@@ -206,9 +207,9 @@ func TestHTLCScriptConstruction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
 
-	// 4. Verify sCrypt artifact script is substantially larger than old hand-rolled script
-	// sCrypt scripts are ~972 bytes vs old ~115 bytes.
-	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
+	// 4. Verify plain Bitcoin Script HTLC has expected size (~110 bytes).
+	assert.Greater(t, len(htlcScript), 80, "HTLC script should be at least 80 bytes")
+	assert.Less(t, len(htlcScript), 150, "plain HTLC script should be under 150 bytes")
 
 	// 5. Verify capsule_hash is embedded in the script
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash), "script should contain capsule_hash")

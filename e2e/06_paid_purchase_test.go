@@ -217,11 +217,11 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	})
 	require.NoError(t, err, "build HTLC script")
 	require.NotEmpty(t, htlcScript, "HTLC script should not be empty")
-	t.Logf("HTLC script: %d bytes (sCrypt artifact)", len(htlcScript))
+	t.Logf("HTLC script: %d bytes (plain Bitcoin Script)", len(htlcScript))
 
-	// Verify the sCrypt artifact script is substantially larger than old hand-rolled script.
-	// sCrypt scripts are ~972 bytes vs old ~115 bytes.
-	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
+	// Plain Bitcoin Script HTLC is ~110 bytes (much smaller than old sCrypt ~972 bytes).
+	assert.Greater(t, len(htlcScript), 80, "plain HTLC script should be at least 80 bytes")
+	assert.Less(t, len(htlcScript), 150, "plain HTLC script should be less than 150 bytes")
 
 	// Verify capsule hash is embedded in the script.
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash),
@@ -247,12 +247,17 @@ func TestPaidPurchaseFlow(t *testing.T) {
 
 	changePKH := buyerFeeKey.PublicKey.Hash()
 
+	// HTLC amount must cover claim tx fee.
+	htlcAmount := invoice.Price
+	if htlcAmount < 5000 {
+		htlcAmount = 5000
+	}
 	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
 		BuyerPrivKey: buyerFeeKey.PrivateKey,
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
-		Amount:       invoice.Price,
+		Amount:       htlcAmount,
 		Timeout:      payment.DefaultHTLCTimeout,
 		UTXOs: []*payment.HTLCUTXO{{
 			TxID:         buyerUTXO.TxID,
@@ -287,6 +292,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 		FundingAmount: fundingResult.HTLCAmount,
 		HTLCScript:    fundingResult.HTLCScript,
 		Capsule:       capsule,
+		FileTxID:      fileTxID,
 		SellerPrivKey: sellerFeeKey.PrivateKey,
 		OutputAddr:    sellerPKH,
 		FeeRate:       1,
@@ -311,10 +317,11 @@ func TestPaidPurchaseFlow(t *testing.T) {
 		"extracted capsule should match original capsule")
 	t.Logf("extracted capsule: %x", extractedCapsule[:16])
 
-	// Verify the extracted capsule's hash matches the HTLC lock.
-	extractedHash := sha256.Sum256(extractedCapsule)
-	require.Equal(t, capsuleHash, extractedHash[:],
-		"SHA256(extracted capsule) should match capsule hash in HTLC")
+	// Verify the extracted capsule's hash matches the HTLC lock (SHA256(fileTxID || capsule)).
+	extractedHash, chErr2 := method42.ComputeCapsuleHash(fileTxID, extractedCapsule)
+	require.NoError(t, chErr2, "compute capsule hash from extracted capsule")
+	require.Equal(t, capsuleHash, extractedHash,
+		"capsule hash from extracted capsule should match HTLC lock")
 
 	// ==================================================================
 	// Step 11: Buyer decrypts content using the extracted capsule.
@@ -534,8 +541,9 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
 
-	// Verify sCrypt artifact script is substantially larger than old hand-rolled script.
-	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
+	// Plain Bitcoin Script HTLC is ~110 bytes.
+	assert.Greater(t, len(htlcScript), 80, "plain HTLC script should be at least 80 bytes")
+	assert.Less(t, len(htlcScript), 150, "plain HTLC script should be less than 150 bytes")
 
 	// Verify script contains the capsule hash.
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash),
@@ -561,21 +569,23 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 		LockingScript: dummyLockScript,
 	})
 
-	// Seller claim unlocking: <sig> <seller_pubkey> <capsule> OP_TRUE
+	// Seller claim unlocking: <sig> <pubkey> <fileTxID||capsule> OP_TRUE
 	unlockScript := &script.Script{}
-	require.NoError(t, unlockScript.AppendPushData(bytes.Repeat([]byte{0x30}, 72)))
-	require.NoError(t, unlockScript.AppendPushData(sellerPubKey.Compressed()))
-	require.NoError(t, unlockScript.AppendPushData(capsule))
-	require.NoError(t, unlockScript.AppendOpcodes(script.OpTRUE))
+	require.NoError(t, unlockScript.AppendPushData(bytes.Repeat([]byte{0x30}, 72))) // sig
+	require.NoError(t, unlockScript.AppendPushData(sellerPubKey.Compressed()))       // pubkey
+	claimPreimage := append(append([]byte{}, fileTxID...), capsule...)               // fileTxID || capsule
+	require.NoError(t, unlockScript.AppendPushData(claimPreimage))                   // preimage
+	require.NoError(t, unlockScript.AppendOpcodes(script.OpTRUE))                    // claim branch
 	claimTx.Inputs[0].UnlockingScript = unlockScript
 
 	extracted, err := payment.ParseHTLCPreimage(claimTx.Bytes(), nil)
 	require.NoError(t, err, "extract preimage from simulated claim tx")
 	assert.Equal(t, capsule, extracted, "extracted preimage should equal capsule")
 
-	// Verify extracted preimage hashes to capsule hash.
-	h := sha256.Sum256(extracted)
-	assert.Equal(t, capsuleHash, h[:], "SHA256(extracted) should equal capsule hash")
+	// Verify extracted preimage hashes to capsule hash (SHA256(fileTxID || capsule)).
+	computedHash, chErr2 := method42.ComputeCapsuleHash(fileTxID, extracted)
+	require.NoError(t, chErr2, "compute capsule hash from extracted preimage")
+	assert.Equal(t, capsuleHash, computedHash, "capsule hash from extracted should match")
 
 	// ------------------------------------------------------------------
 	// 6. Verify payment invoice creation.
@@ -592,8 +602,8 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 }
 
 // TestPaidPurchase_BuyerRefund tests the on-chain buyer refund path on regtest.
-// With the sCrypt-based HTLC, the buyer can unilaterally refund after timeout
-// using OP_PUSH_TX nLockTime verification -- no seller involvement needed.
+// With the plain Bitcoin Script HTLC, the buyer can unilaterally refund after timeout
+// using OP_CHECKLOCKTIMEVERIFY -- no seller involvement needed.
 //
 // Flow:
 //  1. Build an HTLC funding tx with a short timeout
@@ -625,11 +635,10 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
 	invoiceID := bytes.Repeat([]byte{0xcc}, payment.InvoiceIDLen)
 
-	// Use a timeout that is the current block height + MinHTLCTimeout so the
-	// HTLC validation passes (Timeout must be >= MinHTLCTimeout).
-	blockCount, err := node.GetBlockCount(ctx)
-	require.NoError(t, err)
-	timeout := uint32(blockCount) + payment.MinHTLCTimeout
+	// Timeout is an nLockTime value embedded in the HTLC script.
+	// For regtest, use MinHTLCTimeout as a low absolute block height so the
+	// refund becomes valid once we mine enough blocks past confirmation.
+	timeout := uint32(payment.MinHTLCTimeout)
 
 	// Build and broadcast HTLC funding tx.
 	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
@@ -637,7 +646,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
-		Amount:       5000, // enough to cover sCrypt script fees
+		Amount:       5000, // enough to cover claim tx fees
 		Timeout:      timeout,
 		UTXOs: []*payment.HTLCUTXO{{
 			TxID:         buyerUTXO.TxID,
