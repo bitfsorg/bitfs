@@ -401,8 +401,8 @@ func TestContentNegotiation_WithMetanet_Markdown(t *testing.T) {
 	d.Handler().ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	// Dots and dashes are now escaped in markdown output.
-	assert.Contains(t, w.Body.String(), `readme\.md`)
+	// Dots are not Markdown special characters and are left unescaped.
+	assert.Contains(t, w.Body.String(), `readme.md`)
 }
 
 func TestContentNegotiation_PaidContent(t *testing.T) {
@@ -1415,9 +1415,9 @@ func TestContentNegotiation_WithMetanet_DirMarkdown(t *testing.T) {
 	d.Handler().ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	// Dots are escaped in markdown output.
-	assert.Contains(t, w.Body.String(), `sunset\.jpg`)
-	assert.Contains(t, w.Body.String(), `dawn\.jpg`)
+	// Dots are not Markdown special characters and are left unescaped.
+	assert.Contains(t, w.Body.String(), `sunset.jpg`)
+	assert.Contains(t, w.Body.String(), `dawn.jpg`)
 }
 
 func TestPaidContent_PriceHeaders(t *testing.T) {

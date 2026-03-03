@@ -352,7 +352,7 @@ func markdownEscape(s string) string {
 		"#", `\#`,
 		"+", `\+`,
 		"-", `\-`,
-		".", `\.`,
+		// "." is not a Markdown special character; don't escape it.
 		"!", `\!`,
 		"|", `\|`,
 	)
