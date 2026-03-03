@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bitfsorg/bitfs/internal/banner"
 	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
@@ -53,6 +54,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if fs.NArg() < 1 {
+		banner.Print("0.1.0")
 		fmt.Fprintf(stderr, `Usage: bmget [--json] [--buy] [--concurrency N] [--fail-fast] [--host URL] <bitfs-uri> [local-dir]
 
 Batch-download all files from a BitFS directory.

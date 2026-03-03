@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitfsorg/bitfs/internal/banner"
 	"github.com/bitfsorg/bitfs/internal/buy"
 	"github.com/bitfsorg/bitfs/internal/client"
 	"github.com/bitfsorg/libbitfs-go/method42"
@@ -49,6 +50,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if fs.NArg() < 1 {
+		banner.Print("0.1.0")
 		fmt.Fprintf(stderr, `Usage: bcat [--buy] [--host URL] [--timeout DURATION] <bitfs-uri>
 
 Examples:

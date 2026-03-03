@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/bitfsorg/bitfs/internal/banner"
 )
 
 // Version is the current build version of the bitfs CLI.
@@ -130,6 +132,7 @@ func writeJSONErr(command string, code int, err error) int {
 }
 
 func printUsage() {
+	banner.Print(Version)
 	fmt.Fprintf(os.Stderr, `bitfs - BitFS Decentralized Encrypted File System (version %s)
 
 Usage:
