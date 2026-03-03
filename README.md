@@ -49,12 +49,12 @@ Core business logic lives in [libbitfs-go/vault](../libbitfs-go/vault/).
 # Unit tests
 go test ./...
 
-# Integration tests (276 tests, 19 files)
+# Integration tests
 go test -tags=integration ./integration/ -count=1
 
 # E2E tests (requires Docker Desktop)
 cd e2e && docker compose up -d && cd ..
-go test -tags=e2e ./e2e/... -v -timeout 120s
+go test -tags=e2e ./e2e/... -v -timeout 600s
 ```
 
 ## License

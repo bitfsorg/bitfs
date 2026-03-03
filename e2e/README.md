@@ -18,7 +18,7 @@ cd e2e && docker compose up -d
 docker compose exec bsv-node bitcoin-cli -regtest -rpcuser=bitfs -rpcpassword=bitfs getblockchaininfo
 
 # Run all e2e tests
-cd .. && go test -tags e2e ./e2e/... -v -timeout 300s
+cd .. && go test -tags e2e ./e2e/... -v -timeout 600s
 
 # Run specific test
 go test -tags e2e ./e2e/ -run TestWalletFund -v

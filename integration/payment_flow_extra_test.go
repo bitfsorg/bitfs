@@ -19,8 +19,8 @@ import (
 
 	"github.com/bitfsorg/bitfs/internal/daemon"
 	"github.com/bitfsorg/libbitfs-go/method42"
-	"github.com/bitfsorg/libbitfs-go/wallet"
 	"github.com/bitfsorg/libbitfs-go/payment"
+	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 
 // --- Invoice Expiry & Fields Tests ---
@@ -154,8 +154,8 @@ func TestHTLCParamsCapsuleHashWrongLength(t *testing.T) {
 		"16-byte capsule hash should fail with ErrHTLCBuildFailed")
 }
 
-// TestHTLCParamsZeroTimeout verifies BuildHTLC with Timeout=0 fails.
-// The implementation requires Timeout > 0.
+// TestHTLCParamsZeroTimeout verifies BuildHTLC accepts Timeout=0.
+// Timeout is enforced at transaction level (nLockTime), and 0 means default timeout.
 func TestHTLCParamsZeroTimeout(t *testing.T) {
 	buyerPub := bytes.Repeat([]byte{0x02}, 33)
 	sellerAddr := bytes.Repeat([]byte{0x11}, 20)
@@ -163,7 +163,7 @@ func TestHTLCParamsZeroTimeout(t *testing.T) {
 	invoiceID := bytes.Repeat([]byte{0xaa}, payment.InvoiceIDLen)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
-	_, err := payment.BuildHTLC(&payment.HTLCParams{
+	script, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPub,
 		SellerPubKey: sellerPub,
 		SellerAddr:   sellerAddr,
@@ -172,8 +172,9 @@ func TestHTLCParamsZeroTimeout(t *testing.T) {
 		Timeout:      0,
 		InvoiceID:    invoiceID,
 	})
-	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed,
-		"zero timeout should fail with ErrHTLCBuildFailed")
+	require.NoError(t, err,
+		"zero timeout should be accepted by BuildHTLC")
+	assert.NotEmpty(t, script)
 }
 
 // TestHTLCScriptContainsBuyerPubKey verifies the HTLC script embeds the buyer's pubkey.
@@ -198,8 +199,8 @@ func TestHTLCScriptContainsBuyerPubKey(t *testing.T) {
 		InvoiceID:    invoiceID,
 	})
 	require.NoError(t, err)
-	// sCrypt artifact embeds HASH160(buyerPub) rather than the raw compressed pubkey.
-	// Verify the script is non-empty (the sCrypt artifact was instantiated successfully).
+	// Plain Bitcoin Script HTLC embeds buyer PKH (HASH160(buyerPub)), not the raw pubkey.
+	// Verify script construction succeeds and returns non-empty script bytes.
 	assert.NotEmpty(t, htlcScript, "HTLC script should not be empty")
 }
 

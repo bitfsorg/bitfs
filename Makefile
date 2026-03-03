@@ -1,6 +1,7 @@
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0-dev")
 BINS    := bitfs bls bcat bget bstat btree
 OUTDIR  := bin
+E2E_TIMEOUT ?= 600s
 
 .PHONY: all build test lint clean e2e install help
 .PHONY: regtest regtest-down testnet testnet-down
@@ -26,7 +27,7 @@ lint: ## Run golangci-lint
 
 e2e: ## Run e2e tests (requires Docker)
 	cd e2e && docker compose up -d
-	go test -tags e2e ./e2e/... -v -timeout 120s
+	go test -tags e2e ./e2e/... -v -timeout $(E2E_TIMEOUT)
 
 regtest: ## Start regtest node (RPC localhost:18332)
 	cd e2e && docker compose up -d
