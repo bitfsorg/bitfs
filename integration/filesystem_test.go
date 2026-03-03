@@ -23,7 +23,11 @@ import (
 
 // --- Mock NodeStore ---
 
-// mockNodeStore implements metanet.NodeStore for testing.
+// Compile-time interface checks.
+var _ metanet.NodeStore = (*mockNodeStore)(nil)
+var _ metanet.OutpointStore = (*mockNodeStore)(nil)
+
+// mockNodeStore implements metanet.NodeStore and metanet.OutpointStore for testing.
 type mockNodeStore struct {
 	nodes map[string]*metanet.Node // key = hex(P_node)
 }
@@ -79,6 +83,15 @@ func (m *mockNodeStore) GetChildNodes(dirNode *metanet.Node) ([]*metanet.Node, e
 		}
 	}
 	return children, nil
+}
+
+func (m *mockNodeStore) GetNodeByOutpoint(txID []byte, vout uint32) (*metanet.Node, error) {
+	for _, node := range m.nodes {
+		if bytes.Equal(node.TxID, txID) && node.Vout == vout {
+			return node, nil
+		}
+	}
+	return nil, metanet.ErrNodeNotFound
 }
 
 func (m *mockNodeStore) AddNode(node *metanet.Node) {
