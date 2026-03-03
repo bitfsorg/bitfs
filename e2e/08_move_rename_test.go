@@ -313,7 +313,7 @@ func TestMoveRename(t *testing.T) {
 		require.NoError(t, err, "parse root tx")
 		require.True(t, rootParsed.Outputs[0].LockingScript.IsData())
 		rootScriptBytes := []byte(*rootParsed.Outputs[0].LockingScript)
-		assert.True(t, bytes.Contains(rootScriptBytes, tx.MetaFlagBytes),
+		assert.True(t, bytes.Contains(rootScriptBytes, tx.MetaFlagBytes()),
 			"root OP_RETURN should contain MetaFlag")
 
 		// dir_a and dir_b are in the same TX (dirTxIDStr).

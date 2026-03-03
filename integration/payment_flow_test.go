@@ -127,7 +127,8 @@ func createTestDaemon(t *testing.T) (*daemon.Daemon, *mockContentStore) {
 func TestX402InvoiceHeaderRoundTrip(t *testing.T) {
 	// 1. Create invoice with price, file size, capsule hash
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
-	invoice := payment.NewInvoice(100, 10240, "1BitFSAddress...", capsuleHash, 3600)
+	invoice, invErr := payment.NewInvoice(100, 10240, "1BitFSAddress...", capsuleHash, 3600)
+	require.NoError(t, invErr)
 	require.NotNil(t, invoice)
 	assert.Greater(t, invoice.Price, uint64(0))
 	assert.Equal(t, uint64(100), invoice.PricePerKB)
@@ -135,7 +136,8 @@ func TestX402InvoiceHeaderRoundTrip(t *testing.T) {
 	assert.False(t, invoice.IsExpired())
 
 	// Verify price calculation: ceil(100 * 10240 / 1024) = 1000
-	expectedPrice := payment.CalculatePrice(100, 10240)
+	expectedPrice, priceErr := payment.CalculatePrice(100, 10240)
+	require.NoError(t, priceErr)
 	assert.Equal(t, uint64(1000), expectedPrice)
 	assert.Equal(t, expectedPrice, invoice.Price)
 
@@ -189,7 +191,8 @@ func TestHTLCScriptConstruction(t *testing.T) {
 	// Build a mock seller address (20-byte hash)
 	sellerAddr := bytes.Repeat([]byte{0x11}, 20)
 
-	// 3. Build HTLC script
+	// 3. Build HTLC script (sCrypt-based artifact)
+	invoiceID := bytes.Repeat([]byte{0xdd}, payment.InvoiceIDLen)
 	sellerPubKey := sellerKey.PublicKey.Compressed()
 	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerKey.PublicKey.Compressed(),
@@ -198,30 +201,23 @@ func TestHTLCScriptConstruction(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
 		Timeout:      144,
+		InvoiceID:    invoiceID,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
 
-	// 4. Verify script contains correct opcodes
-	// OP_IF = 0x63, OP_SHA256 = 0xa8, OP_EQUALVERIFY = 0x88
-	// OP_ELSE = 0x67, OP_CHECKMULTISIG = 0xae, OP_CHECKSIG = 0xac
-	// OP_ENDIF = 0x68
-	assert.True(t, bytes.Contains(htlcScript, []byte{0x63}), "script should contain OP_IF")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0xa8}), "script should contain OP_SHA256")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0x88}), "script should contain OP_EQUALVERIFY")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0x67}), "script should contain OP_ELSE")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0xae}), "script should contain OP_CHECKMULTISIG")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0xac}), "script should contain OP_CHECKSIG")
-	assert.True(t, bytes.Contains(htlcScript, []byte{0x68}), "script should contain OP_ENDIF")
+	// 4. Verify sCrypt artifact script is substantially larger than old hand-rolled script
+	// sCrypt scripts are ~972 bytes vs old ~115 bytes.
+	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
 
-	// 5. Verify capsule_hash is in the script
+	// 5. Verify capsule_hash is embedded in the script
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash), "script should contain capsule_hash")
 
-	// 6. Verify buyer pubkey is in the script
-	assert.True(t, bytes.Contains(htlcScript, buyerKey.PublicKey.Compressed()), "script should contain buyer pubkey")
-
-	// 7. Verify seller address is in the script
+	// 6. Verify seller address is in the script
 	assert.True(t, bytes.Contains(htlcScript, sellerAddr), "script should contain seller address")
+
+	// 7. Verify invoiceID is in the script
+	assert.True(t, bytes.Contains(htlcScript, invoiceID), "script should contain invoiceID")
 }
 
 // --- TestHTLCScriptValidation ---
@@ -230,6 +226,7 @@ func TestHTLCScriptValidation(t *testing.T) {
 	buyerPub := bytes.Repeat([]byte{0x02}, 33)
 	sellerAddr := bytes.Repeat([]byte{0x11}, 20)
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
+	invoiceID := bytes.Repeat([]byte{0xee}, payment.InvoiceIDLen)
 
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
 
@@ -241,6 +238,7 @@ func TestHTLCScriptValidation(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
 		Timeout:      144,
+		InvoiceID:    invoiceID,
 	})
 	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
@@ -252,6 +250,7 @@ func TestHTLCScriptValidation(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
 		Timeout:      144,
+		InvoiceID:    invoiceID,
 	})
 	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
@@ -263,6 +262,19 @@ func TestHTLCScriptValidation(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       0,
 		Timeout:      144,
+		InvoiceID:    invoiceID,
+	})
+	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
+
+	// Missing InvoiceID
+	_, err = payment.BuildHTLC(&payment.HTLCParams{
+		BuyerPubKey:  buyerPub,
+		SellerPubKey: sellerPub,
+		SellerAddr:   sellerAddr,
+		CapsuleHash:  capsuleHash,
+		Amount:       1000,
+		Timeout:      144,
+		InvoiceID:    nil,
 	})
 	assert.ErrorIs(t, err, payment.ErrHTLCBuildFailed)
 
@@ -428,7 +440,8 @@ func TestInvoicePriceCalculation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			price := payment.CalculatePrice(tc.pricePerKB, tc.fileSize)
+			price, err := payment.CalculatePrice(tc.pricePerKB, tc.fileSize)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expected, price)
 		})
 	}
@@ -461,11 +474,13 @@ func TestEndToEndPaymentFlow(t *testing.T) {
 	require.NoError(t, chErr)
 
 	// Create invoice
-	invoice := payment.NewInvoice(100, uint64(len(plaintext)), "1SellerAddr...", capsuleHash, 3600)
+	invoice, invErr := payment.NewInvoice(100, uint64(len(plaintext)), "1SellerAddr...", capsuleHash, 3600)
+	require.NoError(t, invErr)
 	assert.Greater(t, invoice.Price, uint64(0))
 	assert.False(t, invoice.IsExpired())
 
 	// Build HTLC (buyer creates this)
+	invoiceID := bytes.Repeat([]byte{0xaa}, payment.InvoiceIDLen)
 	sellerPub := bytes.Repeat([]byte{0x03}, 33)
 	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerKey.PublicKey.Compressed(),
@@ -474,6 +489,7 @@ func TestEndToEndPaymentFlow(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
 		Timeout:      payment.DefaultHTLCTimeout,
+		InvoiceID:    invoiceID,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)

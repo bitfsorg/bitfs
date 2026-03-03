@@ -186,7 +186,8 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	require.NotEmpty(t, invoice.ID, "invoice should have an ID")
 	require.False(t, invoice.IsExpired(), "invoice should not be expired")
 
-	expectedPrice := payment.CalculatePrice(pricePerKB, fileSize)
+	expectedPrice, priceErr := payment.CalculatePrice(pricePerKB, fileSize)
+	require.NoError(t, priceErr, "calculate price")
 	require.Equal(t, expectedPrice, invoice.Price, "invoice price should match calculated price")
 	require.Equal(t, capsuleHash, invoice.CapsuleHash, "invoice capsule hash should match")
 	t.Logf("invoice: id=%s price=%d sat (%.2f sat/KB * %d bytes)",
@@ -199,6 +200,11 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	sellerPKH := sellerFeeKey.PublicKey.Hash()
 	require.Len(t, sellerPKH, 20, "seller PKH should be 20 bytes")
 
+	// Parse the invoice ID (hex string) into 16 bytes for the HTLC.
+	invoiceIDBytes, err := hex.DecodeString(invoice.ID)
+	require.NoError(t, err, "decode invoice ID hex")
+	require.Len(t, invoiceIDBytes, payment.InvoiceIDLen, "invoice ID should be 16 bytes")
+
 	sellerPubKeyCompressed := sellerFeeKey.PublicKey.Compressed()
 	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerFeeKey.PublicKey.Compressed(),
@@ -207,64 +213,27 @@ func TestPaidPurchaseFlow(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       invoice.Price,
 		Timeout:      payment.DefaultHTLCTimeout,
+		InvoiceID:    invoiceIDBytes,
 	})
 	require.NoError(t, err, "build HTLC script")
 	require.NotEmpty(t, htlcScript, "HTLC script should not be empty")
-	t.Logf("HTLC script: %d bytes", len(htlcScript))
+	t.Logf("HTLC script: %d bytes (sCrypt artifact)", len(htlcScript))
 
-	// Verify the HTLC script structure by parsing it.
-	htlcScriptObj := script.Script(htlcScript)
-	chunks, err := htlcScriptObj.Chunks()
-	require.NoError(t, err, "parse HTLC script chunks")
-
-	// Expected structure (2-of-2 multisig refund):
-	// OP_IF OP_SHA256 <capsule_hash> OP_EQUALVERIFY
-	// OP_DUP OP_HASH160 <seller_addr> OP_EQUALVERIFY OP_CHECKSIG
-	// OP_ELSE OP_2 <buyer_pubkey> <seller_pubkey> OP_2 OP_CHECKMULTISIG OP_ENDIF
-	require.GreaterOrEqual(t, len(chunks), 13,
-		"HTLC script should have at least 13 chunks")
-
-	// Verify OP_IF at start and OP_ENDIF at end.
-	assert.Equal(t, script.OpIF, chunks[0].Op, "first chunk should be OP_IF")
-	assert.Equal(t, script.OpENDIF, chunks[len(chunks)-1].Op, "last chunk should be OP_ENDIF")
-
-	// Verify OP_SHA256 is present (seller claim path).
-	assert.Equal(t, script.OpSHA256, chunks[1].Op, "second chunk should be OP_SHA256")
+	// Verify the sCrypt artifact script is substantially larger than old hand-rolled script.
+	// sCrypt scripts are ~972 bytes vs old ~115 bytes.
+	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
 
 	// Verify capsule hash is embedded in the script.
-	assert.Equal(t, capsuleHash, chunks[2].Data,
-		"third chunk should contain capsule hash")
-
-	// Verify OP_CHECKMULTISIG is present (buyer 2-of-2 multisig refund path).
-	foundMultisig := false
-	for _, chunk := range chunks {
-		if chunk.Op == script.OpCHECKMULTISIG {
-			foundMultisig = true
-			break
-		}
-	}
-	assert.True(t, foundMultisig, "HTLC should contain OP_CHECKMULTISIG for 2-of-2 refund")
-
-	// Verify buyer pubkey is embedded in the script.
-	buyerPubKeyBytes := buyerFeeKey.PublicKey.Compressed()
-	foundBuyerPK := false
-	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, buyerPubKeyBytes) {
-			foundBuyerPK = true
-			break
-		}
-	}
-	assert.True(t, foundBuyerPK, "HTLC should contain buyer's compressed public key")
+	assert.True(t, bytes.Contains(htlcScript, capsuleHash),
+		"HTLC script should contain capsule hash")
 
 	// Verify seller address hash is embedded in the script.
-	foundSellerAddr := false
-	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, sellerPKH) {
-			foundSellerAddr = true
-			break
-		}
-	}
-	assert.True(t, foundSellerAddr, "HTLC should contain seller's address hash")
+	assert.True(t, bytes.Contains(htlcScript, sellerPKH),
+		"HTLC script should contain seller's address hash")
+
+	// Verify invoiceID is embedded in the script.
+	assert.True(t, bytes.Contains(htlcScript, invoiceIDBytes),
+		"HTLC script should contain invoiceID")
 
 	// ==================================================================
 	// Step 8: Fund buyer and build HTLC funding tx using BuildHTLCFundingTx.
@@ -293,6 +262,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 		}},
 		ChangeAddr: changePKH,
 		FeeRate:    1,
+		InvoiceID:  invoiceIDBytes,
 	})
 	require.NoError(t, err, "build HTLC funding tx")
 	t.Logf("HTLC funding tx: %d bytes", len(fundingResult.RawTx))
@@ -551,6 +521,7 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	// ------------------------------------------------------------------
 	sellerPKH := sellerPubKey.Hash()
 
+	invoiceID := bytes.Repeat([]byte{0xaa}, payment.InvoiceIDLen)
 	htlcScript, err := payment.BuildHTLC(&payment.HTLCParams{
 		BuyerPubKey:  buyerPubKey.Compressed(),
 		SellerPubKey: sellerPubKey.Compressed(),
@@ -558,17 +529,17 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 		CapsuleHash:  capsuleHash,
 		Amount:       1000,
 		Timeout:      payment.DefaultHTLCTimeout,
+		InvoiceID:    invoiceID,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, htlcScript)
 
+	// Verify sCrypt artifact script is substantially larger than old hand-rolled script.
+	assert.Greater(t, len(htlcScript), 200, "sCrypt script should be larger than legacy HTLC")
+
 	// Verify script contains the capsule hash.
 	assert.True(t, bytes.Contains(htlcScript, capsuleHash),
 		"HTLC script should embed capsule hash")
-
-	// Verify script contains buyer pubkey.
-	assert.True(t, bytes.Contains(htlcScript, buyerPubKey.Compressed()),
-		"HTLC script should embed buyer pubkey")
 
 	// Verify script contains seller address.
 	assert.True(t, bytes.Contains(htlcScript, sellerPKH),
@@ -611,23 +582,31 @@ func TestPaidPurchase_CryptoFlowUnit(t *testing.T) {
 	// ------------------------------------------------------------------
 	inv, invErr := payment.NewInvoice(50, uint64(len(plaintext)), "1SellerAddr", capsuleHash, 300)
 	require.NoError(t, invErr, "create invoice")
-	assert.Equal(t, payment.CalculatePrice(50, uint64(len(plaintext))), inv.Price)
+	expectedPriceUnit, priceErr := payment.CalculatePrice(50, uint64(len(plaintext)))
+	require.NoError(t, priceErr, "calculate price")
+	assert.Equal(t, expectedPriceUnit, inv.Price)
 	assert.Equal(t, capsuleHash, inv.CapsuleHash)
 	assert.False(t, inv.IsExpired())
 
 	t.Logf("Unit crypto flow: encrypt -> capsule -> HTLC -> extract -> decrypt OK")
 }
 
-// TestPaidPurchase_BuyerRefund tests the buyer refund path on regtest.
-// It builds an HTLC funding tx, mines past the timeout, then spends via refund.
+// TestPaidPurchase_BuyerRefund tests the on-chain buyer refund path on regtest.
+// With the sCrypt-based HTLC, the buyer can unilaterally refund after timeout
+// using OP_PUSH_TX nLockTime verification -- no seller involvement needed.
+//
+// Flow:
+//  1. Build an HTLC funding tx with a short timeout
+//  2. Mine past the timeout
+//  3. Buyer builds and broadcasts an on-chain refund tx (no seller signature)
 func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	node := testutil.NewTestNode(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
-	sellerWallet := setupFundedWallet(t, ctx, node)
 	buyerWallet := setupFundedWallet(t, ctx, node)
+	sellerWallet := setupFundedWallet(t, ctx, node)
 
 	sellerFeeKey, err := sellerWallet.DeriveFeeKey(wallet.ExternalChain, 0)
 	require.NoError(t, err)
@@ -644,11 +623,13 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 	sellerPubKeyCompressed := sellerFeeKey.PublicKey.Compressed()
 	buyerPKH := buyerFeeKey.PublicKey.Hash()
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
+	invoiceID := bytes.Repeat([]byte{0xcc}, payment.InvoiceIDLen)
 
-	// Use a very short timeout (current block height + 1) so we can refund quickly.
+	// Use a timeout that is the current block height + MinHTLCTimeout so the
+	// HTLC validation passes (Timeout must be >= MinHTLCTimeout).
 	blockCount, err := node.GetBlockCount(ctx)
 	require.NoError(t, err)
-	timeout := uint32(blockCount + 1)
+	timeout := uint32(blockCount) + payment.MinHTLCTimeout
 
 	// Build and broadcast HTLC funding tx.
 	fundingResult, err := payment.BuildHTLCFundingTx(&payment.HTLCFundingParams{
@@ -656,7 +637,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 		SellerPubKey: sellerPubKeyCompressed,
 		SellerAddr:   sellerPKH,
 		CapsuleHash:  capsuleHash,
-		Amount:       1000,
+		Amount:       5000, // enough to cover sCrypt script fees
 		Timeout:      timeout,
 		UTXOs: []*payment.HTLCUTXO{{
 			TxID:         buyerUTXO.TxID,
@@ -666,55 +647,46 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 		}},
 		ChangeAddr: buyerPKH,
 		FeeRate:    1,
+		InvoiceID:  invoiceID,
 	})
-	require.NoError(t, err)
+	require.NoError(t, err, "build HTLC funding tx")
 
 	htlcTxID, err := node.SendRawTransaction(ctx, hex.EncodeToString(fundingResult.RawTx))
-	require.NoError(t, err)
+	require.NoError(t, err, "broadcast HTLC funding tx")
 	t.Logf("HTLC funding txid: %s (timeout at block %d)", htlcTxID, timeout)
 
-	// Step 1: Seller pre-signs the refund tx (seller's half of 2-of-2 multisig).
-	preSignResult, err := payment.BuildSellerPreSignedRefund(&payment.SellerPreSignParams{
-		FundingTxID:     fundingResult.TxID,
-		FundingVout:     fundingResult.HTLCVout,
-		FundingAmount:   fundingResult.HTLCAmount,
-		HTLCScript:      fundingResult.HTLCScript,
-		SellerPrivKey:   sellerFeeKey.PrivateKey,
-		BuyerOutputAddr: buyerPKH,
-		Timeout:         timeout,
-		FeeRate:         1,
-	})
-	require.NoError(t, err, "seller pre-sign refund tx")
-	t.Logf("seller pre-signed refund: %d bytes, sig %d bytes",
-		len(preSignResult.TxBytes), len(preSignResult.SellerSig))
-
-	// Step 2: Buyer counter-signs (adds their half of 2-of-2 multisig).
-	refundTx, err := payment.BuildBuyerRefundTx(&payment.BuyerRefundParams{
-		SellerPreSignedTx: preSignResult.TxBytes,
-		SellerSig:         preSignResult.SellerSig,
-		HTLCScript:        fundingResult.HTLCScript,
-		FundingAmount:     fundingResult.HTLCAmount,
-		BuyerPrivKey:      buyerFeeKey.PrivateKey,
-	})
-	require.NoError(t, err, "buyer counter-sign refund tx")
-
 	// Mine past the timeout so the nLockTime refund becomes valid.
-	// WaitForConfirmation with minConf=2 mines 2 blocks on regtest,
-	// advancing past the timeout (blockCount + 1).
-	require.NoError(t, node.WaitForConfirmation(ctx, htlcTxID, 2), "wait for confirmation")
+	// WaitForConfirmation mines minConf blocks on regtest. We need to advance
+	// past the timeout block height. Mining MinHTLCTimeout+2 blocks ensures
+	// both confirmation of the funding tx and advancement past timeout.
+	require.NoError(t, node.WaitForConfirmation(ctx, htlcTxID, int(payment.MinHTLCTimeout)+2),
+		"mine past HTLC timeout")
 
-	// Broadcast the fully-signed refund tx.
+	// Buyer builds the on-chain refund tx (no seller involvement needed).
+	refundTx, err := payment.BuildBuyerRefundTx(&payment.BuyerRefundParams{
+		FundingTxID:   fundingResult.TxID,
+		FundingVout:   fundingResult.HTLCVout,
+		FundingAmount: fundingResult.HTLCAmount,
+		HTLCScript:    fundingResult.HTLCScript,
+		BuyerPrivKey:  buyerFeeKey.PrivateKey,
+		OutputAddr:    buyerPKH,
+		Timeout:       timeout,
+		FeeRate:       1,
+	})
+	require.NoError(t, err, "build buyer on-chain refund tx")
+
+	// Broadcast the refund tx.
 	refundTxHex := hex.EncodeToString(refundTx.Bytes())
 	refundTxID, err := node.SendRawTransaction(ctx, refundTxHex)
 	require.NoError(t, err, "broadcast buyer refund tx")
 	t.Logf("buyer refund txid: %s", refundTxID)
 
 	// Confirm the refund tx.
-	require.NoError(t, node.WaitForConfirmation(ctx, refundTxID, 1), "wait for confirmation")
+	require.NoError(t, node.WaitForConfirmation(ctx, refundTxID, 1), "confirm refund")
 
 	// Verify refund was confirmed.
 	refundRaw, err := node.GetRawTransaction(ctx, refundTxID)
 	require.NoError(t, err)
 	require.NotEmpty(t, refundRaw)
-	t.Logf("buyer refund confirmed on-chain: %d bytes", len(refundRaw))
+	t.Logf("buyer on-chain refund confirmed: %d bytes", len(refundRaw))
 }

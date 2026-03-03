@@ -439,7 +439,7 @@ func TestMkdirUpload_ChildTxStructure(t *testing.T) {
 
 	// OP_RETURN should contain MetaFlag.
 	scriptBytes := []byte(*parsedTx.Outputs[0].LockingScript)
-	assert.True(t, bytes.Contains(scriptBytes, tx.MetaFlagBytes),
+	assert.True(t, bytes.Contains(scriptBytes, tx.MetaFlagBytes()),
 		"OP_RETURN should contain MetaFlag")
 
 	// OP_RETURN should contain ParentTxID.

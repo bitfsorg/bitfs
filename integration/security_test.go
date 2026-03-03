@@ -527,6 +527,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 	validSellerPub := bytes.Repeat([]byte{0x03}, 33)
 	validSellerAddr := bytes.Repeat([]byte{0x11}, 20)
 	validCapsuleHash := bytes.Repeat([]byte{0xab}, 32)
+	validInvoiceID := bytes.Repeat([]byte{0xcc}, payment.InvoiceIDLen)
 
 	tests := []struct {
 		name   string
@@ -540,6 +541,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			CapsuleHash:  validCapsuleHash,
 			Amount:       1000,
 			Timeout:      144,
+			InvoiceID:    validInvoiceID,
 		}},
 		{"wrong-length SellerAddr", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
@@ -548,6 +550,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			CapsuleHash:  validCapsuleHash,
 			Amount:       1000,
 			Timeout:      144,
+			InvoiceID:    validInvoiceID,
 		}},
 		{"nil CapsuleHash", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
@@ -556,6 +559,7 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			CapsuleHash:  nil,
 			Amount:       1000,
 			Timeout:      144,
+			InvoiceID:    validInvoiceID,
 		}},
 		{"zero Amount", &payment.HTLCParams{
 			BuyerPubKey:  validBuyerPub,
@@ -564,6 +568,16 @@ func TestInputValidationHTLCBadParams(t *testing.T) {
 			CapsuleHash:  validCapsuleHash,
 			Amount:       0,
 			Timeout:      144,
+			InvoiceID:    validInvoiceID,
+		}},
+		{"nil InvoiceID", &payment.HTLCParams{
+			BuyerPubKey:  validBuyerPub,
+			SellerPubKey: validSellerPub,
+			SellerAddr:   validSellerAddr,
+			CapsuleHash:  validCapsuleHash,
+			Amount:       1000,
+			Timeout:      144,
+			InvoiceID:    nil,
 		}},
 	}
 

@@ -230,7 +230,7 @@ func TestOPReturnPayloadRoundTrip(t *testing.T) {
 
 	// Parse the payload back into a node
 	fullPushes := [][]byte{
-		tx.MetaFlagBytes,
+		tx.MetaFlagBytes(),
 		nodeKey.PublicKey.Compressed(),
 		parentTxID,
 		parsedPayload,

@@ -184,7 +184,7 @@ func TestMetanetRootTx(t *testing.T) {
 		"OP_RETURN output should have 0 satoshis")
 
 	// Search for MetaFlag bytes (0x6d657461 = "meta") in the OP_RETURN script.
-	metaFlagBytes := tx.MetaFlagBytes
+	metaFlagBytes := tx.MetaFlagBytes()
 	scriptBytes := []byte(*opReturnOutput.LockingScript)
 	require.True(t, bytes.Contains(scriptBytes, metaFlagBytes),
 		"OP_RETURN script should contain MetaFlag bytes (0x6d657461)")

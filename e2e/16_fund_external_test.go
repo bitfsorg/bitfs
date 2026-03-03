@@ -183,7 +183,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	assert.Equal(t, uint64(0), opReturnOutput.Satoshis,
 		"OP_RETURN output should have 0 satoshis")
 
-	metaFlagBytes := tx.MetaFlagBytes
+	metaFlagBytes := tx.MetaFlagBytes()
 	scriptBytes := []byte(*opReturnOutput.LockingScript)
 	assert.True(t, bytes.Contains(scriptBytes, metaFlagBytes),
 		"OP_RETURN script should contain MetaFlag bytes (0x6d657461)")

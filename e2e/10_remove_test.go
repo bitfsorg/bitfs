@@ -675,7 +675,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 		require.NoError(t, err, "parse root tx")
 		require.True(t, rootParsed.Outputs[0].LockingScript.IsData())
 		rootScriptBytes := []byte(*rootParsed.Outputs[0].LockingScript)
-		assert.True(t, bytes.Contains(rootScriptBytes, tx.MetaFlagBytes),
+		assert.True(t, bytes.Contains(rootScriptBytes, tx.MetaFlagBytes()),
 			"root OP_RETURN should contain MetaFlag")
 
 		// Verify dir tx is on-chain with correct parent link.
@@ -731,7 +731,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 
 		// Verify MetaFlag is present.
 		removeScriptBytes := []byte(*opReturnOutput.LockingScript)
-		assert.True(t, bytes.Contains(removeScriptBytes, tx.MetaFlagBytes),
+		assert.True(t, bytes.Contains(removeScriptBytes, tx.MetaFlagBytes()),
 			"remove tx OP_RETURN should contain MetaFlag")
 
 		pushes := extractPushData(t, opReturnOutput.LockingScript)

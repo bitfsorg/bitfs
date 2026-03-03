@@ -413,7 +413,7 @@ func TestParseOPReturnDataMalformed(t *testing.T) {
 		{"empty pushes", [][]byte{}},
 		{"1 push", [][]byte{{0x01}}},
 		{"2 pushes", [][]byte{{0x01}, {0x02}}},
-		{"3 pushes", [][]byte{tx.MetaFlagBytes, bytes.Repeat([]byte{0x02}, 33), bytes.Repeat([]byte{0x03}, 32)}},
+		{"3 pushes", [][]byte{tx.MetaFlagBytes(), bytes.Repeat([]byte{0x02}, 33), bytes.Repeat([]byte{0x03}, 32)}},
 	}
 
 	for _, tc := range tests {
