@@ -433,7 +433,7 @@ func TestDaemonConfigDefaults(t *testing.T) {
 	require.NotNil(t, config)
 
 	assert.NotEmpty(t, config.ListenAddr, "default ListenAddr should not be empty")
-	assert.Equal(t, ":8080", config.ListenAddr)
+	assert.Equal(t, "127.0.0.1:8080", config.ListenAddr)
 	assert.False(t, config.TLS.Enabled, "TLS should be disabled by default")
 	assert.Greater(t, config.Security.RateLimit.RPM, 0, "rate limit RPM should be positive")
 	assert.Greater(t, config.Security.RateLimit.Burst, 0, "rate limit burst should be positive")

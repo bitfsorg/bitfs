@@ -58,6 +58,7 @@ func TestBuildFullMetanetTree(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, payload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetFeeRate(1)
+	rootBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err)
@@ -73,7 +74,7 @@ func TestBuildFullMetanetTree(t *testing.T) {
 	assert.Len(t, opReturnPushes, 4)
 
 	// Verify MetaFlag (0x6d657461) is present
-	assert.Equal(t, tx.MetaFlagBytes, opReturnPushes[0])
+	assert.Equal(t, tx.MetaFlagBytes(), opReturnPushes[0])
 	assert.Equal(t, []byte{0x6d, 0x65, 0x74, 0x61}, opReturnPushes[0])
 
 	// Verify P_node matches derived public key
@@ -115,6 +116,7 @@ func TestBuildFullMetanetTree(t *testing.T) {
 	childBatch.AddCreateChild(childKey.PublicKey, fakeTxID, childPayload, parentUTXO, rootKey.PrivateKey)
 	childBatch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x02}, 32), Vout: 0, Amount: 100000})
 	childBatch.SetFeeRate(1)
+	childBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	childResult, err := childBatch.Build()
 	require.NoError(t, err)
@@ -145,6 +147,7 @@ func TestBuildFullMetanetTree(t *testing.T) {
 		childKey.PrivateKey)
 	updateBatch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x03}, 32), Vout: 0, Amount: 100000})
 	updateBatch.SetFeeRate(1)
+	updateBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	updateResult, err := updateBatch.Build()
 	require.NoError(t, err)
@@ -359,6 +362,7 @@ func TestUTXOChainContinuity(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetFeeRate(1)
+	rootBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err)
@@ -392,6 +396,7 @@ func TestUTXOChainContinuity(t *testing.T) {
 	child1Batch.AddCreateChild(child1Key.PublicKey, bytes.Repeat([]byte{0xaa}, 32), child1Payload, parentUTXO1, rootKey.PrivateKey)
 	child1Batch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x02}, 32), Vout: 0, Amount: 500000})
 	child1Batch.SetFeeRate(1)
+	child1Batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	child1Result, err := child1Batch.Build()
 	require.NoError(t, err)
@@ -426,6 +431,7 @@ func TestUTXOChainContinuity(t *testing.T) {
 	child2Batch.AddCreateChild(child2Key.PublicKey, bytes.Repeat([]byte{0xbb}, 32), child2Payload, parentUTXO2, rootKey.PrivateKey)
 	child2Batch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x03}, 32), Vout: 0, Amount: 500000})
 	child2Batch.SetFeeRate(1)
+	child2Batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	child2Result, err := child2Batch.Build()
 	require.NoError(t, err)
@@ -509,6 +515,7 @@ func TestTransactionSizeEstimationAccuracy(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x01}, 32), Vout: 0, Amount: 100000})
 	rootBatch.SetFeeRate(1)
+	rootBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err)

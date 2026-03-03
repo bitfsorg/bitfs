@@ -183,6 +183,7 @@ func TestBatchCreateRootWithChange(t *testing.T) {
 	batch.AddCreateRoot(rootKey.PublicKey, payload)
 	batch.AddFeeInput(makeFeeUTXO(500000))
 	batch.SetFeeRate(1)
+	batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	result, err := batch.Build()
 	require.NoError(t, err)
@@ -222,6 +223,7 @@ func TestBatchCreateChildAllOutputs(t *testing.T) {
 	batch.AddCreateChild(childKey.PublicKey, fakeTxID, childPayload, parentUTXO, rootKey.PrivateKey)
 	batch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x02}, 32), Vout: 0, Amount: 500000})
 	batch.SetFeeRate(1)
+	batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	result, err := batch.Build()
 	require.NoError(t, err)
@@ -262,6 +264,7 @@ func TestBatchSelfUpdatePreservesParentTxID(t *testing.T) {
 		childKey.PrivateKey)
 	batch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x03}, 32), Vout: 0, Amount: 100000})
 	batch.SetFeeRate(1)
+	batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	result, err := batch.Build()
 	require.NoError(t, err)
@@ -296,6 +299,7 @@ func TestBatchSelfUpdateSingleOp(t *testing.T) {
 		childKey.PrivateKey)
 	batch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{0x04}, 32), Vout: 0, Amount: 100000})
 	batch.SetFeeRate(1)
+	batch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	result, err := batch.Build()
 	require.NoError(t, err)
@@ -375,7 +379,7 @@ func TestOPReturnDataMetaFlag(t *testing.T) {
 	for i, payload := range payloads {
 		pushes, err := tx.BuildOPReturnData(rootKey.PublicKey, nil, payload)
 		require.NoError(t, err, "payload %d", i)
-		assert.Equal(t, tx.MetaFlagBytes, pushes[0],
+		assert.Equal(t, tx.MetaFlagBytes(), pushes[0],
 			"first push must always be MetaFlagBytes for payload %d", i)
 		assert.Equal(t, []byte{0x6d, 0x65, 0x74, 0x61}, pushes[0])
 	}
@@ -549,8 +553,8 @@ func TestDustLimitConstant(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMetaFlagConstant(t *testing.T) {
-	assert.Equal(t, []byte("meta"), tx.MetaFlagBytes)
-	assert.Equal(t, []byte{0x6d, 0x65, 0x74, 0x61}, tx.MetaFlagBytes)
+	assert.Equal(t, []byte("meta"), tx.MetaFlagBytes())
+	assert.Equal(t, []byte{0x6d, 0x65, 0x74, 0x61}, tx.MetaFlagBytes())
 }
 
 // ---------------------------------------------------------------------------
@@ -566,6 +570,7 @@ func TestBatchMultiChildSequential(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, payload)
 	rootBatch.AddFeeInput(makeFeeUTXO(500000))
 	rootBatch.SetFeeRate(1)
+	rootBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err)
@@ -599,6 +604,7 @@ func TestBatchMultiChildSequential(t *testing.T) {
 		childBatch.AddCreateChild(childKey.PublicKey, currentParentTxID, childPayload, currentParentUTXO, rootKey.PrivateKey)
 		childBatch.AddFeeInput(&tx.UTXO{TxID: bytes.Repeat([]byte{byte(i)}, 32), Vout: 0, Amount: 500000})
 		childBatch.SetFeeRate(1)
+		childBatch.SetChange(bytes.Repeat([]byte{0xcc}, 20))
 
 		childResult, err := childBatch.Build()
 		require.NoError(t, err, "child %d build should succeed", i)
