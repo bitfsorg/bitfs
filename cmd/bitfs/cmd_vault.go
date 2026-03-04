@@ -16,7 +16,7 @@ import (
 // runVault dispatches vault subcommands.
 func runVault(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete> [options]\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete|export> [options]\n")
 		return exitUsageError
 	}
 
@@ -32,13 +32,16 @@ func runVault(args []string) int {
 		return runVaultRename(subArgs)
 	case "delete":
 		return runVaultDelete(subArgs)
+	case "export":
+		return runVaultExport(subArgs)
 	case "--help", "-h":
-		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete|export> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Subcommands:\n")
 		fmt.Fprintf(os.Stderr, "  create <name>       Create a new vault\n")
 		fmt.Fprintf(os.Stderr, "  list                List all vaults\n")
 		fmt.Fprintf(os.Stderr, "  rename <old> <new>  Rename a vault\n")
 		fmt.Fprintf(os.Stderr, "  delete <name>       Delete a vault\n")
+		fmt.Fprintf(os.Stderr, "  export <name>       Export vault root private key\n")
 		return exitSuccess
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown vault subcommand %q\n", sub)
@@ -206,5 +209,56 @@ func runVaultDelete(args []string) int {
 	}
 
 	fmt.Printf("Vault %q deleted.\n", name)
+	return exitSuccess
+}
+
+// runVaultExport exports the vault root private key.
+func runVaultExport(args []string) int {
+	fs := flag.NewFlagSet("vault export", flag.ContinueOnError)
+	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
+	password := fs.String("password", "", "wallet password (for testing)")
+	format := fs.String("format", "wif", "export format: wif, hex, or seed-path")
+	yes := fs.Bool("yes", false, "skip confirmation prompt")
+
+	if err := fs.Parse(args); err != nil {
+		return exitUsageError
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault export <name> [--format wif|hex|seed-path] [--yes]\n")
+		return exitUsageError
+	}
+
+	vaultName := fs.Arg(0)
+
+	w, state, err := loadWalletFromDataDir(*dataDir, *password)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return exitWalletError
+	}
+
+	// For wif/hex formats, warn about private key exposure.
+	if *format == "wif" || *format == "hex" {
+		if !*yes {
+			fmt.Fprintf(os.Stderr, "WARNING: This will display the vault root PRIVATE KEY.\n")
+			fmt.Fprintf(os.Stderr, "Anyone with this key can control all files in vault %q.\n", vaultName)
+			fmt.Fprintf(os.Stderr, "Continue? [y/N] ")
+
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" && answer != "Y" {
+				fmt.Fprintf(os.Stderr, "Aborted.\n")
+				return exitSuccess
+			}
+		}
+	}
+
+	result, err := w.ExportVaultKey(state, vaultName, *format)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return exitError
+	}
+
+	fmt.Println(result)
 	return exitSuccess
 }

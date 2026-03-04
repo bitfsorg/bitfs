@@ -49,6 +49,8 @@ func run(args []string) int {
 		return runWallet(cmdArgs)
 	case "vault":
 		return runVault(cmdArgs)
+	case "paymail":
+		return runPaymail(cmdArgs)
 	case "cat":
 		return runCat(cmdArgs)
 	case "get":
@@ -149,6 +151,12 @@ Vault Commands:
   vault list     List all vaults
   vault rename   Rename a vault
   vault delete   Delete a vault
+  vault export   Export vault root private key
+
+Paymail Commands:
+  paymail bind     Bind a vault to a paymail alias
+  paymail unbind   Remove a paymail alias binding
+  paymail list     List all paymail bindings
 
 File Commands:
   cat            View file contents
