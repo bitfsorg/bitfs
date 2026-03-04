@@ -5,13 +5,13 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 
+	"github.com/bitfsorg/bitfs/internal/engine"
 	"github.com/bitfsorg/libbitfs-go/config"
 	"github.com/bitfsorg/libbitfs-go/wallet"
 )
@@ -64,44 +64,28 @@ func runPaymailBind(args []string) int {
 	alias := fs.Arg(0)
 	vaultName := fs.Arg(1)
 
-	w, state, err := loadWalletFromDataDir(*dataDir, *password)
+	pass, err := resolvePassword(*password)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
 
-	if err := w.BindPaymail(state, alias, vaultName); err != nil {
+	eng := engine.New(*dataDir, pass)
+	pubHex, err := eng.PaymailBind(alias, vaultName)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		switch {
 		case errors.Is(err, wallet.ErrVaultNotFound):
 			return exitNotFound
 		case errors.Is(err, wallet.ErrInvalidAlias):
 			return exitUsageError
-		default:
+		case errors.Is(err, wallet.ErrAliasExists), errors.Is(err, wallet.ErrVaultAlreadyBound):
 			return exitConflict
+		default:
+			return exitWalletError
 		}
 	}
 
-	statePath := *dataDir + "/state.json"
-	if err := saveWalletState(statePath, state); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to save state: %v\n", err)
-		return exitError
-	}
-
-	// Derive pubkey for display.
-	vault, err := w.GetVault(state, vaultName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return exitError
-	}
-
-	rootKey, err := w.DeriveVaultRootKey(vault.AccountIndex)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to derive vault root key: %v\n", err)
-		return exitWalletError
-	}
-
-	pubHex := hex.EncodeToString(rootKey.PublicKey.Compressed())
 	fmt.Printf("Bound paymail alias %q → vault %q (%s...)\n", alias, vaultName, pubHex[:16])
 
 	return exitSuccess
@@ -124,28 +108,20 @@ func runPaymailUnbind(args []string) int {
 
 	alias := fs.Arg(0)
 
-	w, state, err := loadWalletFromDataDir(*dataDir, *password)
+	pass, err := resolvePassword(*password)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
 
-	// Look up vault name for display before unbinding.
-	vaultName, err := w.ResolvePaymailAlias(state, alias)
+	eng := engine.New(*dataDir, pass)
+	vaultName, err := eng.PaymailUnbind(alias)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return exitNotFound
-	}
-
-	if err := w.UnbindPaymail(state, alias); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return exitNotFound
-	}
-
-	statePath := *dataDir + "/state.json"
-	if err := saveWalletState(statePath, state); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to save state: %v\n", err)
-		return exitError
+		if errors.Is(err, wallet.ErrAliasNotFound) {
+			return exitNotFound
+		}
+		return exitWalletError
 	}
 
 	fmt.Printf("Unbound paymail alias %q (was → vault %q)\n", alias, vaultName)
@@ -170,15 +146,19 @@ func runPaymailList(args []string) int {
 		return exitUsageError
 	}
 
-	w, state, err := loadWalletFromDataDir(*dataDir, *password)
+	pass, err := resolvePassword(*password)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitWalletError
 	}
 
-	bindings := w.ListPaymailBindings(state)
-
-	if len(bindings) == 0 {
+	eng := engine.New(*dataDir, pass)
+	entriesRaw, err := eng.PaymailList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return exitWalletError
+	}
+	if len(entriesRaw) == 0 {
 		if *jsonOut {
 			fmt.Println("[]")
 		} else {
@@ -187,21 +167,12 @@ func runPaymailList(args []string) int {
 		return exitSuccess
 	}
 
-	// Build entries with pubkeys.
-	entries := make([]paymailEntry, 0, len(bindings))
-	for _, b := range bindings {
-		pubHex := "(error)"
-		vault, err := w.GetVault(state, b.Vault)
-		if err == nil {
-			rootKey, err := w.DeriveVaultRootKey(vault.AccountIndex)
-			if err == nil {
-				pubHex = hex.EncodeToString(rootKey.PublicKey.Compressed())
-			}
-		}
+	entries := make([]paymailEntry, 0, len(entriesRaw))
+	for _, e := range entriesRaw {
 		entries = append(entries, paymailEntry{
-			Alias:  b.Alias,
-			Vault:  b.Vault,
-			Pubkey: pubHex,
+			Alias:  e.Alias,
+			Vault:  e.Vault,
+			Pubkey: e.Pubkey,
 		})
 	}
 

@@ -38,4 +38,7 @@ var (
 
 	// ErrInternalError indicates an internal server error.
 	ErrInternalError = errors.New("daemon: internal error")
+
+	// ErrWalletReloadUnsupported indicates wallet does not support state reload.
+	ErrWalletReloadUnsupported = errors.New("daemon: wallet reload unsupported")
 )

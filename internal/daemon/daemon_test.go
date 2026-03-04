@@ -24,9 +24,11 @@ import (
 
 // mockWallet implements WalletService for testing.
 type mockWallet struct {
-	privKey *ec.PrivateKey
-	pubKey  *ec.PublicKey
-	err     error
+	privKey   *ec.PrivateKey
+	pubKey    *ec.PublicKey
+	err       error
+	reloadErr error
+	reloadN   int
 
 	// vaultKeys maps alias names to compressed hex public keys for GetVaultPubKey.
 	vaultKeys map[string]string
@@ -74,6 +76,11 @@ func (m *mockWallet) GetVaultPubKey(alias string) (string, error) {
 		return "", fmt.Errorf("vault not found: %s", alias)
 	}
 	return key, nil
+}
+
+func (m *mockWallet) ReloadState() error {
+	m.reloadN++
+	return m.reloadErr
 }
 
 // mockStore implements ContentStore for testing.

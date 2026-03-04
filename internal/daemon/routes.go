@@ -44,6 +44,10 @@ func (d *Daemon) RegisterRoutes(mux *http.ServeMux) {
 	// Sales listing (admin-protected)
 	mux.HandleFunc("GET /_bitfs/sales", wrap(d.withAdminAuth(d.handleSales)))
 
+	// Wallet state reload (admin-protected)
+	mux.HandleFunc("POST /_bitfs/admin/reload", wrap(d.withAdminAuth(d.handleAdminReload)))
+	mux.HandleFunc("OPTIONS /_bitfs/admin/reload", wrap(d.handleOptions))
+
 	// SPV proof endpoint
 	mux.HandleFunc("GET /_bitfs/spv/proof/{txid}", wrap(d.handleSPVProof))
 	mux.HandleFunc("OPTIONS /_bitfs/spv/proof/{txid}", wrap(d.handleOptions))
