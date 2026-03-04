@@ -52,6 +52,12 @@ Tests are controlled via environment variables:
 | `BITFS_E2E_FUND_AMOUNT` | `0.00006` | Funding amount per `Fund()` call (BSV) |
 | `BITFS_E2E_CONFIRM_TIMEOUT` | per network | Confirmation wait timeout |
 
+For single-file `.env` setups, every variable above also supports network suffixes:
+`_MAINNET`, `_TESTNET`, `_REGTEST`. Example:
+`BITFS_E2E_ARC_API_KEY_MAINNET`, `BITFS_E2E_ARC_API_KEY_TESTNET`.
+When `BITFS_E2E_NETWORK` is set, the network-specific variable takes precedence
+over the unsuffixed fallback.
+
 ### Network Defaults
 
 | Network | Default Provider | Endpoint Defaults | Confirm Timeout |
@@ -84,6 +90,9 @@ secrets in a non-committed `.env` file.
 cp .env.example .env
 
 # 2) Fill .env with real values (ARC/WoC API keys, funding WIF)
+#    You can keep all networks in one file using suffixes:
+#    BITFS_E2E_ARC_API_KEY_MAINNET=...
+#    BITFS_E2E_ARC_API_KEY_TESTNET=...
 
 # 3) Load .env for the current shell and run tests
 set -a
