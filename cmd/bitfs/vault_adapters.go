@@ -54,14 +54,24 @@ func (a *vaultWalletAdapter) GetSellerKeyPair() (*ec.PrivateKey, *ec.PublicKey, 
 }
 
 func (a *vaultWalletAdapter) GetVaultPubKey(alias string) (string, error) {
-	vaultIdx, err := a.v.ResolveVaultIndex(alias)
+	// Resolve alias → vault name via PaymailBindings.
+	vaultName, err := a.v.Wallet.ResolvePaymailAlias(a.v.WState, alias)
 	if err != nil {
 		return "", err
 	}
-	kp, err := a.v.Wallet.DeriveVaultRootKey(vaultIdx)
+
+	// Look up vault → account_index.
+	vault, err := a.v.Wallet.GetVault(a.v.WState, vaultName)
 	if err != nil {
 		return "", err
 	}
+
+	// Derive public key.
+	kp, err := a.v.Wallet.DeriveVaultRootKey(vault.AccountIndex)
+	if err != nil {
+		return "", err
+	}
+
 	return hex.EncodeToString(kp.PublicKey.Compressed()), nil
 }
 
