@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1685,7 +1686,10 @@ func TestVaultWalletAdapter_GetVaultPubKey_BadVault_Deep(t *testing.T) {
 	a := newVaultWalletAdapter(v)
 	_, err = a.GetVaultPubKey("nonexistent")
 	if err == nil {
-		t.Error("expected error for nonexistent vault")
+		t.Error("expected error for nonexistent alias")
+	}
+	if !errors.Is(err, wallet.ErrAliasNotFound) {
+		t.Errorf("expected ErrAliasNotFound, got: %v", err)
 	}
 }
 

@@ -7,11 +7,13 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/bitfsorg/libbitfs-go/config"
+	"github.com/bitfsorg/libbitfs-go/wallet"
 )
 
 // runPaymail dispatches paymail subcommands.
@@ -70,7 +72,14 @@ func runPaymailBind(args []string) int {
 
 	if err := w.BindPaymail(state, alias, vaultName); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return exitConflict
+		switch {
+		case errors.Is(err, wallet.ErrVaultNotFound):
+			return exitNotFound
+		case errors.Is(err, wallet.ErrInvalidAlias):
+			return exitUsageError
+		default:
+			return exitConflict
+		}
 	}
 
 	statePath := *dataDir + "/state.json"
