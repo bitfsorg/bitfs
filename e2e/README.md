@@ -74,6 +74,27 @@ BITFS_E2E_NETWORK=testnet \
   go test -tags e2e ./e2e/... -v -timeout 60m
 ```
 
+### Using `.env` for API keys and WIF
+
+The tests read configuration from environment variables, so you can keep local
+secrets in a non-committed `.env` file.
+
+```bash
+# 1) Create local env file
+cp .env.example .env
+
+# 2) Fill .env with real values (ARC/WoC API keys, funding WIF)
+
+# 3) Load .env for the current shell and run tests
+set -a
+source .env
+set +a
+
+go test -tags e2e ./e2e/... -v -count=1 -timeout 60m
+```
+
+`.gitignore` excludes `.env` by default so keys are not committed.
+
 ### Running on Mainnet
 
 ```bash

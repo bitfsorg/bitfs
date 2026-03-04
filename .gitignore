@@ -2,6 +2,11 @@
 .obsidian/
 bin/
 
+# Local environment variables (API keys, WIF, etc.)
+.env
+.env.*
+!.env.example
+
 # Stray build artifacts in project root
 /bitfs
 /bls
