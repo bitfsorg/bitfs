@@ -1659,6 +1659,11 @@ func TestVaultWalletAdapter_GetVaultPubKey_Deep(t *testing.T) {
 	}
 	defer v.Close()
 
+	// GetVaultPubKey now requires an explicit paymail binding.
+	if err := v.Wallet.BindPaymail(v.WState, "default", "default"); err != nil {
+		t.Fatalf("BindPaymail: %v", err)
+	}
+
 	a := newVaultWalletAdapter(v)
 	pubHex, err := a.GetVaultPubKey("default")
 	if err != nil {

@@ -170,6 +170,11 @@ func TestVaultWalletAdapter_GetVaultPubKey(t *testing.T) {
 	v := openTestVault(t, dataDir)
 	defer v.Close()
 
+	// GetVaultPubKey now requires an explicit paymail binding.
+	if err := v.Wallet.BindPaymail(v.WState, "default", "default"); err != nil {
+		t.Fatalf("BindPaymail: %v", err)
+	}
+
 	wa := newVaultWalletAdapter(v)
 
 	// "default" vault should return a public key.
