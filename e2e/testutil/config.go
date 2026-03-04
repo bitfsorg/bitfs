@@ -26,6 +26,7 @@ type Config struct {
 	ARCWaitFor       string        // ARC X-WaitFor value (optional)
 	BHSBaseURL       string        // BHS API base URL (optional)
 	BHSAPIKey        string        // BHS API key (optional; defaults to ARC key when empty)
+	FeeRateSatPerKB  uint64        // Optional manual fee-rate override in sat/KB (0 = auto)
 	FundWIF          string        // Pre-funded wallet WIF private key
 	FundAmount       float64       // Funding amount per Fund() call, in BSV
 	ConfirmTimeout   time.Duration // Timeout waiting for confirmations/proof readiness
@@ -43,27 +44,30 @@ var networkDefaults = map[string]struct {
 }
 
 func LoadConfig() *Config {
-	network := envOr("BITFS_E2E_NETWORK", "regtest")
+	network := strings.ToLower(strings.TrimSpace(envOr("BITFS_E2E_NETWORK", "regtest")))
+	if network == "" {
+		network = "regtest"
+	}
 	providerDefault := "rpc"
 	if network != "regtest" {
 		providerDefault = "arc"
 	}
-	provider := strings.ToLower(envOr("BITFS_E2E_PROVIDER", providerDefault))
+	provider := strings.ToLower(strings.TrimSpace(envOrNetwork("BITFS_E2E_PROVIDER", providerDefault, network)))
 
 	defaults, ok := networkDefaults[network]
 	if !ok {
 		defaults = networkDefaults["regtest"]
 	}
 
-	rpcURL := envOr("BITFS_E2E_RPC_URL", defaults.rpcURL)
+	rpcURL := envOrNetwork("BITFS_E2E_RPC_URL", defaults.rpcURL, network)
 	confirmTimeout := defaults.confirmTimeout
 	fundAmount := defaultFundAmountBSV
-	arcBaseURL, arcBaseURLSet := os.LookupEnv("BITFS_E2E_ARC_BASE_URL")
+	arcBaseURL, arcBaseURLSet := lookupEnvNetwork("BITFS_E2E_ARC_BASE_URL", network)
 	arcBaseURL = strings.TrimSpace(arcBaseURL)
 	if arcBaseURL == "" {
 		arcBaseURL = defaultARCBaseURL(network)
 	}
-	arcBaseURLs := parseUniqueURLList(os.Getenv("BITFS_E2E_ARC_BASE_URLS"))
+	arcBaseURLs := parseUniqueURLList(envNetwork("BITFS_E2E_ARC_BASE_URLS", network))
 	if len(arcBaseURLs) == 0 && arcBaseURL != "" {
 		arcBaseURLs = []string{arcBaseURL}
 		// Default mainnet ARC failover only when user did not pin ARC_BASE_URL.
@@ -75,38 +79,45 @@ func LoadConfig() *Config {
 		arcBaseURL = arcBaseURLs[0]
 	}
 
-	if v := os.Getenv("BITFS_E2E_CONFIRM_TIMEOUT"); v != "" {
+	if v := envNetwork("BITFS_E2E_CONFIRM_TIMEOUT", network); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			confirmTimeout = d
 		}
 	}
-	if v := os.Getenv("BITFS_E2E_FUND_AMOUNT"); v != "" {
+	if v := envNetwork("BITFS_E2E_FUND_AMOUNT", network); v != "" {
 		if a, err := strconv.ParseFloat(v, 64); err == nil && a > 0 {
 			fundAmount = a
 		}
 	}
-	bhsAPIKey := os.Getenv("BITFS_E2E_BHS_API_KEY")
+	var feeRateSatPerKB uint64
+	if v := strings.TrimSpace(envNetwork("BITFS_E2E_FEE_RATE_SAT_PER_KB", network)); v != "" {
+		if rate, err := strconv.ParseUint(v, 10, 64); err == nil && rate > 0 {
+			feeRateSatPerKB = rate
+		}
+	}
+	bhsAPIKey := envNetwork("BITFS_E2E_BHS_API_KEY", network)
 	if bhsAPIKey == "" {
-		bhsAPIKey = os.Getenv("BITFS_E2E_ARC_API_KEY")
+		bhsAPIKey = envNetwork("BITFS_E2E_ARC_API_KEY", network)
 	}
 
 	return &Config{
 		Network:          network,
 		Provider:         provider,
 		RPCURL:           rpcURL,
-		RPCUser:          envOr("BITFS_E2E_RPC_USER", "bitfs"),
-		RPCPass:          envOr("BITFS_E2E_RPC_PASS", "bitfs"),
-		WOCBaseURL:       envOr("BITFS_E2E_WOC_BASE_URL", defaultWOCBaseURL(network)),
-		WOCAPIKey:        os.Getenv("BITFS_E2E_WOC_API_KEY"),
+		RPCUser:          envOrNetwork("BITFS_E2E_RPC_USER", "bitfs", network),
+		RPCPass:          envOrNetwork("BITFS_E2E_RPC_PASS", "bitfs", network),
+		WOCBaseURL:       envOrNetwork("BITFS_E2E_WOC_BASE_URL", defaultWOCBaseURL(network), network),
+		WOCAPIKey:        envNetwork("BITFS_E2E_WOC_API_KEY", network),
 		ARCBaseURL:       arcBaseURL,
 		ARCBaseURLs:      arcBaseURLs,
-		ARCAPIKey:        os.Getenv("BITFS_E2E_ARC_API_KEY"),
-		ARCCallbackURL:   os.Getenv("BITFS_E2E_ARC_CALLBACK_URL"),
-		ARCCallbackToken: os.Getenv("BITFS_E2E_ARC_CALLBACK_TOKEN"),
-		ARCWaitFor:       os.Getenv("BITFS_E2E_ARC_WAIT_FOR"),
-		BHSBaseURL:       os.Getenv("BITFS_E2E_BHS_BASE_URL"),
+		ARCAPIKey:        envNetwork("BITFS_E2E_ARC_API_KEY", network),
+		ARCCallbackURL:   envNetwork("BITFS_E2E_ARC_CALLBACK_URL", network),
+		ARCCallbackToken: envNetwork("BITFS_E2E_ARC_CALLBACK_TOKEN", network),
+		ARCWaitFor:       envNetwork("BITFS_E2E_ARC_WAIT_FOR", network),
+		BHSBaseURL:       envNetwork("BITFS_E2E_BHS_BASE_URL", network),
 		BHSAPIKey:        bhsAPIKey,
-		FundWIF:          os.Getenv("BITFS_E2E_FUND_WIF"),
+		FeeRateSatPerKB:  feeRateSatPerKB,
+		FundWIF:          envNetwork("BITFS_E2E_FUND_WIF", network),
 		FundAmount:       fundAmount,
 		ConfirmTimeout:   confirmTimeout,
 	}
@@ -150,6 +161,35 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envOrNetwork(key, fallback, network string) string {
+	if v := envNetwork(key, network); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func envNetwork(key, network string) string {
+	if v, ok := lookupEnvNetwork(key, network); ok {
+		return v
+	}
+	return ""
+}
+
+func lookupEnvNetwork(key, network string) (string, bool) {
+	suffix := networkSuffix(network)
+	if suffix != "" {
+		if v, ok := os.LookupEnv(key + "_" + suffix); ok {
+			return v, true
+		}
+	}
+	return os.LookupEnv(key)
+}
+
+func networkSuffix(network string) string {
+	n := strings.ToUpper(strings.TrimSpace(network))
+	return n
 }
 
 func defaultWOCBaseURL(network string) string {

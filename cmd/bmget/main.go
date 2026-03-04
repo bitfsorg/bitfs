@@ -42,6 +42,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	buyFlag := fs.Bool("buy", false, "attempt to purchase paid content")
 	walletKey := fs.String("wallet-key", "", "buyer private key: hex, @filepath, or set BITFS_WALLET_KEY env")
 	utxoStr := fs.String("utxo", "", "buyer UTXO for purchases (txid:vout:amount)")
+	feeRateFlag := fs.String("fee-rate", "", "buyer HTLC fee rate override in sat/KB (optional)")
 	concurrency := fs.Int("concurrency", 4, "max concurrent downloads")
 	failFast := fs.Bool("fail-fast", false, "stop on first error")
 	host := fs.String("host", "", "daemon URL override")
@@ -178,6 +179,7 @@ Examples:
 		cfg, err := buy.LoadConfig(buy.LoadConfigOpts{
 			WalletKeyFlag: *walletKey,
 			UTXOFlag:      *utxoStr,
+			FeeRateFlag:   *feeRateFlag,
 		})
 		if err != nil {
 			if *jsonOut {

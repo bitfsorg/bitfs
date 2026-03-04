@@ -13,7 +13,9 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 )
 
-const defaultFeeRate = uint64(1) // 1 sat/byte
+// defaultFeeRate is expressed in sat/KB.
+// 100 sat/KB == 0.1 sat/byte.
+const defaultFeeRate = uint64(100)
 
 // BuyResult holds the result of a successful purchase.
 type BuyResult struct {
@@ -92,7 +94,8 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 	}
 
 	// Step 2: Resolve UTXOs.
-	utxos, err := resolveUTXOs(params, buyInfo.Price)
+	feeRateSatPerKB := effectiveBuyerFeeRate(params.Config)
+	utxos, err := resolveUTXOs(params, buyInfo.Price, feeRateSatPerKB)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +112,7 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 		Timeout:      payment.DefaultHTLCTimeout,
 		UTXOs:        utxos,
 		ChangeAddr:   buyerPKH,
-		FeeRate:      defaultFeeRate,
+		FeeRate:      feeRateSatPerKB,
 		InvoiceID:    invoiceID,
 	})
 	if err != nil {
@@ -168,7 +171,7 @@ func Buy(params *BuyParams) (*BuyResult, error) {
 // resolveUTXOs returns UTXOs for the HTLC funding transaction. It uses
 // manually specified UTXOs if available, otherwise queries the blockchain
 // service for the buyer's UTXOs.
-func resolveUTXOs(params *BuyParams, price uint64) ([]*payment.HTLCUTXO, error) {
+func resolveUTXOs(params *BuyParams, price uint64, feeRateSatPerKB uint64) ([]*payment.HTLCUTXO, error) {
 	// Prefer manual UTXOs from config (--utxo flag).
 	if len(params.Config.ManualUTXOs) > 0 {
 		// Validate that manual UTXOs cover the price.
@@ -176,7 +179,7 @@ func resolveUTXOs(params *BuyParams, price uint64) ([]*payment.HTLCUTXO, error) 
 		for _, u := range params.Config.ManualUTXOs {
 			total += u.Amount
 		}
-		fee := EstimateHTLCFee(len(params.Config.ManualUTXOs), defaultFeeRate)
+		fee := EstimateHTLCFee(len(params.Config.ManualUTXOs), feeRateSatPerKB)
 		if total < price+fee {
 			return nil, fmt.Errorf("%w: manual UTXOs have %d sat, need %d sat (price=%d + fee~%d)",
 				ErrInsufficientBalance, total, price+fee, price, fee)
@@ -195,5 +198,12 @@ func resolveUTXOs(params *BuyParams, price uint64) ([]*payment.HTLCUTXO, error) 
 		return nil, fmt.Errorf("buyer: derive address: %w", err)
 	}
 
-	return SelectUTXOs(context.Background(), params.Blockchain, addrObj.AddressString, price, defaultFeeRate)
+	return SelectUTXOs(context.Background(), params.Blockchain, addrObj.AddressString, price, feeRateSatPerKB)
+}
+
+func effectiveBuyerFeeRate(cfg *BuyerConfig) uint64 {
+	if cfg != nil && cfg.FeeRateSatPerKB > 0 {
+		return cfg.FeeRateSatPerKB
+	}
+	return defaultFeeRate
 }

@@ -19,9 +19,10 @@ var ErrNoBuyerConfig = errors.New("buyer: no wallet key configured (set --wallet
 
 // BuyerConfig holds the buyer's wallet configuration.
 type BuyerConfig struct {
-	PrivKey     *ec.PrivateKey
-	Network     string              // mainnet|testnet|regtest
-	ManualUTXOs []*payment.HTLCUTXO // Manually specified UTXOs (from --utxo flag)
+	PrivKey         *ec.PrivateKey
+	Network         string              // mainnet|testnet|regtest
+	ManualUTXOs     []*payment.HTLCUTXO // Manually specified UTXOs (from --utxo flag)
+	FeeRateSatPerKB uint64              // Optional manual fee-rate override (0 = fallback)
 }
 
 // LoadConfigOpts holds options for loading buyer config.
@@ -29,6 +30,7 @@ type LoadConfigOpts struct {
 	DataDir       string            // Default: ~/.bitfs
 	WalletKeyFlag string            // --wallet-key CLI flag (highest priority)
 	UTXOFlag      string            // --utxo CLI flag
+	FeeRateFlag   string            // Optional fee-rate override in sat/KB
 	Env           map[string]string // Environment variables (nil = use os.Getenv)
 }
 
@@ -43,6 +45,8 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 
 	var keyHex string
 	var fileNetwork string
+	var fileFeeRate uint64
+	var fileFeeRateSet bool
 
 	// Layer 1: config file (lowest priority).
 	dataDir := opts.DataDir
@@ -51,9 +55,11 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 		dataDir = filepath.Join(home, ".bitfs")
 	}
 	confPath := filepath.Join(dataDir, "buyer.conf")
-	if fileKey, network, err := readBuyerConf(confPath); err == nil {
+	if fileKey, network, feeRate, feeRateSet, err := readBuyerConf(confPath); err == nil {
 		keyHex = fileKey
 		fileNetwork = network
+		fileFeeRate = feeRate
+		fileFeeRateSet = feeRateSet
 	}
 
 	// Layer 2: environment variable.
@@ -89,6 +95,16 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 	if fileNetwork != "" {
 		cfg.Network = fileNetwork
 	}
+	if fileFeeRateSet {
+		cfg.FeeRateSatPerKB = fileFeeRate
+	}
+
+	if envRate, ok := parseFeeRateSatPerKB(envGet(opts.Env, "BITFS_BUY_FEE_RATE_SAT_PER_KB")); ok {
+		cfg.FeeRateSatPerKB = envRate
+	}
+	if flagRate, ok := parseFeeRateSatPerKB(opts.FeeRateFlag); ok {
+		cfg.FeeRateSatPerKB = flagRate
+	}
 
 	// Parse manual UTXO if provided.
 	if opts.UTXOFlag != "" {
@@ -105,10 +121,10 @@ func LoadConfig(opts LoadConfigOpts) (*BuyerConfig, error) {
 }
 
 // readBuyerConf reads wallet_key and network from a buyer.conf file.
-func readBuyerConf(path string) (keyHex, network string, err error) {
+func readBuyerConf(path string) (keyHex, network string, feeRate uint64, feeRateSet bool, err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", "", err
+		return "", "", 0, false, err
 	}
 	defer func() { _ = f.Close() }()
 
@@ -129,9 +145,14 @@ func readBuyerConf(path string) (keyHex, network string, err error) {
 			keyHex = value
 		case "network":
 			network = value
+		case "fee_rate_sat_per_kb":
+			if parsed, parseErr := strconv.ParseUint(value, 10, 64); parseErr == nil && parsed > 0 {
+				feeRate = parsed
+				feeRateSet = true
+			}
 		}
 	}
-	return keyHex, network, scanner.Err()
+	return keyHex, network, feeRate, feeRateSet, scanner.Err()
 }
 
 // parsePrivateKey parses a hex-encoded private key (exactly 32 bytes).
@@ -225,4 +246,16 @@ func envGet(env map[string]string, key string) string {
 		return env[key]
 	}
 	return os.Getenv(key)
+}
+
+func parseFeeRateSatPerKB(raw string) (uint64, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, false
+	}
+	rate, err := strconv.ParseUint(trimmed, 10, 64)
+	if err != nil || rate == 0 {
+		return 0, false
+	}
+	return rate, true
 }

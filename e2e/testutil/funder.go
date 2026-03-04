@@ -74,13 +74,17 @@ func fundFromWIFWOC(ctx context.Context, woc *wocClient, cfg *Config, wif, addr 
 	}
 
 	selected := make([]wocUnspent, 0, len(unspent))
+	feeRateSatPerKB := fallbackFeeRateSatPerKB
+	if cfg != nil && cfg.FeeRateSatPerKB > 0 {
+		feeRateSatPerKB = cfg.FeeRateSatPerKB
+	}
 	var lastErr error
 	for _, u := range unspent {
 		if u.Value == 0 {
 			continue
 		}
 		selected = append(selected, u)
-		rawHex, err := buildFundingRawTxFromWIF(selected, priv, sourceAddr.AddressString, addr, amountSat)
+		rawHex, err := buildFundingRawTxFromWIF(selected, priv, sourceAddr.AddressString, addr, amountSat, feeRateSatPerKB)
 		if err != nil {
 			if errors.Is(err, transaction.ErrInsufficientInputs) {
 				lastErr = err
@@ -137,7 +141,12 @@ func fundFromWIFARC(ctx context.Context, arc *arcClient, woc *wocClient, cfg *Co
 			continue
 		}
 		selected = append(selected, u)
-		rawHex, err := buildFundingRawTxFromWIF(selected, priv, sourceAddr.AddressString, addr, amountSat)
+		feeResolution, feeResolutionErr := arc.resolveFeeRate(ctx, cfg, false)
+		feeContext := feeResolution.withRetryFlag(false)
+		if feeResolutionErr != nil {
+			feeContext = feeContext + " policy_error=" + strings.TrimSpace(feeResolutionErr.Error())
+		}
+		rawHex, err := buildFundingRawTxFromWIF(selected, priv, sourceAddr.AddressString, addr, amountSat, feeResolution.FeeRateSatPerKB)
 		if err != nil {
 			if errors.Is(err, transaction.ErrInsufficientInputs) {
 				lastErr = err
@@ -147,15 +156,38 @@ func fundFromWIFARC(ctx context.Context, arc *arcClient, woc *wocClient, cfg *Co
 		}
 		status, err := arc.broadcastRawTx(ctx, rawHex, cfg)
 		if err != nil {
+			if isARCFeeTooLow(err) {
+				refreshedFee, refreshErr := arc.resolveFeeRate(ctx, cfg, true)
+				if refreshErr != nil {
+					return "", "", fmt.Errorf("broadcast funding tx via ARC: %w (%s) (policy refresh failed: %v)",
+						err, feeResolution.withRetryFlag(true), refreshErr)
+				}
+				retryRawHex, buildErr := buildFundingRawTxFromWIF(selected, priv, sourceAddr.AddressString, addr, amountSat, refreshedFee.FeeRateSatPerKB)
+				if buildErr != nil {
+					return "", "", fmt.Errorf("broadcast funding tx via ARC: %w (%s) (retry rebuild failed: %v)",
+						err, refreshedFee.withRetryFlag(true), buildErr)
+				}
+				status, err = arc.broadcastRawTx(ctx, retryRawHex, cfg)
+				if err != nil {
+					return "", "", fmt.Errorf("broadcast funding tx via ARC: %w (%s)", err, refreshedFee.withRetryFlag(true))
+				}
+				rawHex = retryRawHex
+				feeResolution = refreshedFee
+				feeContext = refreshedFee.withRetryFlag(true)
+			} else {
+				return "", "", fmt.Errorf("broadcast funding tx via ARC: %w (%s)", err, feeContext)
+			}
+		}
+		if err != nil {
 			return "", "", fmt.Errorf("broadcast funding tx via ARC: %w", err)
 		}
 		if isARCRejectedStatus(status.txStatusValue()) {
-			return "", "", fmt.Errorf("broadcast funding tx via ARC rejected: status=%s title=%q detail=%q extra=%q",
-				status.txStatusValue(), status.Title, arcStatusDetail(status), arcStatusExtraInfo(status))
+			return "", "", fmt.Errorf("broadcast funding tx via ARC rejected: status=%s title=%q detail=%q extra=%q (%s)",
+				status.txStatusValue(), status.Title, arcStatusDetail(status), arcStatusExtraInfo(status), feeContext)
 		}
 		txid := status.txIDValue()
 		if !is64Hex(txid) {
-			return "", "", fmt.Errorf("broadcast funding tx via ARC: missing txid (status=%d title=%q)", status.Status, status.Title)
+			return "", "", fmt.Errorf("broadcast funding tx via ARC: missing txid (status=%d title=%q) (%s)", status.Status, status.Title, feeContext)
 		}
 		return txid, rawHex, nil
 	}
@@ -218,7 +250,7 @@ func p2pkhScriptHexForAddress(addr string) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func buildFundingRawTxFromWIF(selected []wocUnspent, priv *ec.PrivateKey, sourceAddr, destAddr string, amountSat uint64) (string, error) {
+func buildFundingRawTxFromWIF(selected []wocUnspent, priv *ec.PrivateKey, sourceAddr, destAddr string, amountSat uint64, feeRateSatPerKB uint64) (string, error) {
 	tx := transaction.NewTransaction()
 
 	lockScriptBytes, err := libtx.BuildP2PKHScript(priv.PubKey())
@@ -246,8 +278,10 @@ func buildFundingRawTxFromWIF(selected []wocUnspent, priv *ec.PrivateKey, source
 	}
 	tx.Outputs[len(tx.Outputs)-1].Change = true
 
-	// 1000 sat/KB = 1 sat/byte.
-	if err := tx.Fee(&feemodel.SatoshisPerKilobyte{Satoshis: 1000}, transaction.ChangeDistributionEqual); err != nil {
+	if feeRateSatPerKB == 0 {
+		feeRateSatPerKB = fallbackFeeRateSatPerKB
+	}
+	if err := tx.Fee(&feemodel.SatoshisPerKilobyte{Satoshis: feeRateSatPerKB}, transaction.ChangeDistributionEqual); err != nil {
 		return "", err
 	}
 

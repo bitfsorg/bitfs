@@ -75,7 +75,13 @@ func TestBuyResult_Fields(t *testing.T) {
 }
 
 func TestDefaultFeeRate(t *testing.T) {
-	assert.Equal(t, uint64(1), defaultFeeRate)
+	assert.Equal(t, uint64(100), defaultFeeRate)
+}
+
+func TestEffectiveBuyerFeeRate(t *testing.T) {
+	assert.Equal(t, uint64(100), effectiveBuyerFeeRate(nil))
+	assert.Equal(t, uint64(100), effectiveBuyerFeeRate(&BuyerConfig{}))
+	assert.Equal(t, uint64(250), effectiveBuyerFeeRate(&BuyerConfig{FeeRateSatPerKB: 250}))
 }
 
 func testPrivKey(t *testing.T) *ec.PrivateKey {
@@ -425,7 +431,7 @@ func TestResolveUTXOs_ManualSufficient(t *testing.T) {
 				{TxID: make([]byte, 32), Vout: 0, Amount: 100000},
 			},
 		},
-	}, 100)
+	}, 100, defaultFeeRate)
 	require.NoError(t, err)
 	assert.Len(t, utxos, 1)
 }
@@ -439,7 +445,7 @@ func TestResolveUTXOs_ManualInsufficient(t *testing.T) {
 				{TxID: make([]byte, 32), Vout: 0, Amount: 10},
 			},
 		},
-	}, 100000)
+	}, 100000, defaultFeeRate)
 	assert.ErrorIs(t, err, ErrInsufficientBalance)
 }
 
@@ -447,7 +453,7 @@ func TestResolveUTXOs_NoBlockchainNoManual(t *testing.T) {
 	pk := testPrivKey(t)
 	_, err := resolveUTXOs(&BuyParams{
 		Config: &BuyerConfig{PrivKey: pk},
-	}, 100)
+	}, 100, defaultFeeRate)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no UTXOs available")
 }
@@ -469,7 +475,30 @@ func TestResolveUTXOs_BlockchainAutoSelect(t *testing.T) {
 	utxos, err := resolveUTXOs(&BuyParams{
 		Config:     &BuyerConfig{PrivKey: pk},
 		Blockchain: mock,
-	}, 100)
+	}, 100, defaultFeeRate)
 	require.NoError(t, err)
 	assert.NotEmpty(t, utxos)
+}
+
+func TestResolveUTXOs_ManualRespectsFeeRate(t *testing.T) {
+	pk := testPrivKey(t)
+	price := uint64(1000)
+	lowRate := uint64(100)
+	highRate := uint64(1000)
+	amount := price + EstimateHTLCFee(1, lowRate)
+
+	params := &BuyParams{
+		Config: &BuyerConfig{
+			PrivKey: pk,
+			ManualUTXOs: []*payment.HTLCUTXO{
+				{TxID: make([]byte, 32), Vout: 0, Amount: amount},
+			},
+		},
+	}
+
+	_, err := resolveUTXOs(params, price, lowRate)
+	require.NoError(t, err)
+
+	_, err = resolveUTXOs(params, price, highRate)
+	require.ErrorIs(t, err, ErrInsufficientBalance)
 }

@@ -18,9 +18,14 @@ type arcClient struct {
 	baseURLs []string
 	apiKey   string
 	client   *http.Client
+	network  string
 
 	activeMu  sync.RWMutex
 	activeIdx int
+
+	policyMu    sync.RWMutex
+	policyCache map[string]policyCacheEntry
+	now         func() time.Time
 }
 
 type arcHealth struct {
@@ -38,6 +43,19 @@ type arcTxStatus struct {
 	BlockHeight *uint64 `json:"blockHeight"`
 	ExtraInfo   *string `json:"extraInfo"`
 	Detail      *string `json:"detail"`
+}
+
+type arcPolicyResponse struct {
+	Policy *arcPolicy `json:"policy"`
+}
+
+type arcPolicy struct {
+	MiningFee *arcMiningFee `json:"miningFee"`
+}
+
+type arcMiningFee struct {
+	Satoshis *uint64 `json:"satoshis"`
+	Bytes    *uint64 `json:"bytes"`
 }
 
 type arcRequestError struct {
@@ -67,7 +85,7 @@ func (e *arcRequestError) Unwrap() error {
 	return e.Cause
 }
 
-func newARCClient(baseURLs []string, apiKey string) *arcClient {
+func newARCClient(network string, baseURLs []string, apiKey string) *arcClient {
 	normalized := make([]string, 0, len(baseURLs))
 	for _, baseURL := range baseURLs {
 		baseURL = strings.TrimSpace(strings.TrimRight(baseURL, "/"))
@@ -89,9 +107,12 @@ func newARCClient(baseURLs []string, apiKey string) *arcClient {
 	return &arcClient{
 		baseURLs: normalized,
 		apiKey:   strings.TrimSpace(apiKey),
+		network:  strings.TrimSpace(strings.ToLower(network)),
 		client: &http.Client{
 			Timeout: 20 * time.Second,
 		},
+		policyCache: make(map[string]policyCacheEntry),
+		now:         time.Now,
 	}
 }
 
@@ -142,6 +163,18 @@ func (c *arcClient) markActive(baseURL string) {
 			return
 		}
 	}
+}
+
+func (c *arcClient) activeBaseURL() string {
+	c.activeMu.RLock()
+	defer c.activeMu.RUnlock()
+	if len(c.baseURLs) == 0 {
+		return ""
+	}
+	if c.activeIdx < 0 || c.activeIdx >= len(c.baseURLs) {
+		return c.baseURLs[0]
+	}
+	return c.baseURLs[c.activeIdx]
 }
 
 func isRetryableARCStatus(code int) bool {
@@ -275,6 +308,14 @@ func (c *arcClient) health(ctx context.Context) (*arcHealth, error) {
 func (c *arcClient) txStatus(ctx context.Context, txid string) (*arcTxStatus, error) {
 	var out arcTxStatus
 	if err := c.doJSON(ctx, http.MethodGet, "/tx/"+txid, nil, "", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *arcClient) policy(ctx context.Context) (*arcPolicyResponse, error) {
+	var out arcPolicyResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/policy", nil, "", nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
