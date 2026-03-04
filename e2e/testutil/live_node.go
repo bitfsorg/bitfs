@@ -55,7 +55,7 @@ func (n *liveNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO
 		return nil, fmt.Errorf("fund from WIF: %w", err)
 	}
 
-	if err := n.WaitForConfirmation(ctx, txid, 1); err != nil {
+	if err := n.WaitForProof(ctx, txid, 1); err != nil {
 		return nil, fmt.Errorf("wait for funding propagation: %w", err)
 	}
 
@@ -80,9 +80,9 @@ func (n *liveNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO
 	return nil, fmt.Errorf("no UTXOs found for %s after funding (parse raw tx failed: %v)", addr, parseErr)
 }
 
-// WaitForConfirmation on live RPC nodes waits for transaction propagation,
+// WaitForProof on live RPC nodes waits for transaction propagation,
 // not mined confirmations. It returns once getrawtransaction can locate txid.
-func (n *liveNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+func (n *liveNode) WaitForProof(ctx context.Context, txid string, minConf int) error {
 	_ = minConf // live providers don't require confirmed blocks for most e2e flows
 
 	deadline := time.After(n.config.ConfirmTimeout)
@@ -104,6 +104,11 @@ func (n *liveNode) WaitForConfirmation(ctx context.Context, txid string, minConf
 			// poll again
 		}
 	}
+}
+
+// WaitForConfirmation is a compatibility alias for WaitForProof.
+func (n *liveNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	return n.WaitForProof(ctx, txid, minConf)
 }
 
 // MineBlocks is not supported on live networks and always returns an error.

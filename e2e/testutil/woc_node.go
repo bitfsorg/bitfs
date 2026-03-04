@@ -51,7 +51,7 @@ func (n *wocNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO,
 		return nil, fmt.Errorf("fund from WIF via WOC: %w", err)
 	}
 
-	if err := n.WaitForConfirmation(ctx, txid, 1); err != nil {
+	if err := n.WaitForProof(ctx, txid, 1); err != nil {
 		return nil, fmt.Errorf("wait for funding propagation: %w", err)
 	}
 
@@ -75,7 +75,7 @@ func (n *wocNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO,
 	return nil, fmt.Errorf("no UTXOs found for %s after funding (parse raw tx failed: %v)", addr, parseErr)
 }
 
-func (n *wocNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+func (n *wocNode) WaitForProof(ctx context.Context, txid string, minConf int) error {
 	_ = minConf // live providers don't require confirmed blocks for most e2e flows
 
 	deadline := time.After(n.config.ConfirmTimeout)
@@ -96,6 +96,11 @@ func (n *wocNode) WaitForConfirmation(ctx context.Context, txid string, minConf 
 		case <-ticker.C:
 		}
 	}
+}
+
+// WaitForConfirmation is a compatibility alias for WaitForProof.
+func (n *wocNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	return n.WaitForProof(ctx, txid, minConf)
 }
 
 func (n *wocNode) MineBlocks(_ context.Context, _ int, _ string) ([]string, error) {

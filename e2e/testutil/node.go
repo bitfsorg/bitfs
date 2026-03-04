@@ -21,11 +21,14 @@ type TestNode interface {
 	Network() string
 	// IsAvailable returns true if the node is reachable and responding.
 	IsAvailable(ctx context.Context) bool
-	// Fund sends the specified amount to addr and waits for confirmation.
+	// Fund sends the specified amount to addr and waits until the funding tx is usable.
 	// On regtest it mines blocks; on live networks it uses the configured WIF wallet.
 	Fund(ctx context.Context, addr string, amount float64) (*UTXO, error)
-	// WaitForConfirmation waits until the given txid has at least minConf confirmations.
-	// On regtest it mines blocks; on live networks it polls.
+	// WaitForProof waits until txid is usable for downstream verification/workflows.
+	// On regtest it mines blocks; on live networks it waits for propagation/proof readiness.
+	WaitForProof(ctx context.Context, txid string, minConf int) error
+	// WaitForConfirmation is kept as a backward-compatible alias of WaitForProof.
+	// Deprecated: prefer WaitForProof.
 	WaitForConfirmation(ctx context.Context, txid string, minConf int) error
 
 	// --- RPC pass-through methods ---
@@ -164,14 +167,19 @@ func (n *RegtestNode) Fund(ctx context.Context, addr string, amount float64) (*U
 	return &utxos[0], nil
 }
 
-// WaitForConfirmation on regtest simply mines the required number of blocks.
-func (n *RegtestNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+// WaitForProof on regtest mines the required number of blocks.
+func (n *RegtestNode) WaitForProof(ctx context.Context, txid string, minConf int) error {
 	addr, err := n.NewAddress(ctx)
 	if err != nil {
 		return fmt.Errorf("generate mining address: %w", err)
 	}
 	_, err = n.MineBlocks(ctx, minConf, addr)
 	return err
+}
+
+// WaitForConfirmation is a compatibility alias for WaitForProof.
+func (n *RegtestNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	return n.WaitForProof(ctx, txid, minConf)
 }
 
 // --- RPC pass-through methods ---

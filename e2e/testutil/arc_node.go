@@ -71,7 +71,7 @@ func (n *arcNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO,
 	}
 	n.cacheRawTx(txid, rawHex)
 
-	if err := n.WaitForConfirmation(ctx, txid, 1); err != nil {
+	if err := n.WaitForProof(ctx, txid, 1); err != nil {
 		return nil, fmt.Errorf("wait for funding propagation: %w", err)
 	}
 
@@ -95,9 +95,9 @@ func (n *arcNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO,
 	return nil, fmt.Errorf("no UTXOs found for %s after funding (parse raw tx failed: %v)", addr, parseErr)
 }
 
-// WaitForConfirmation on ARC waits for transaction propagation, not mined confirmation.
+// WaitForProof on ARC waits for transaction propagation, not mined confirmation.
 // It returns once ARC knows the transaction (e.g. SEEN_ON_NETWORK or MINED).
-func (n *arcNode) WaitForConfirmation(ctx context.Context, txid string, _ int) error {
+func (n *arcNode) WaitForProof(ctx context.Context, txid string, _ int) error {
 	deadline := time.After(n.config.ConfirmTimeout)
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -116,6 +116,11 @@ func (n *arcNode) WaitForConfirmation(ctx context.Context, txid string, _ int) e
 		case <-ticker.C:
 		}
 	}
+}
+
+// WaitForConfirmation is a compatibility alias for WaitForProof.
+func (n *arcNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	return n.WaitForProof(ctx, txid, minConf)
 }
 
 func (n *arcNode) MineBlocks(_ context.Context, _ int, _ string) ([]string, error) {

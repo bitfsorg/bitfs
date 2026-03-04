@@ -13,6 +13,7 @@ import (
 )
 
 func TestApplyNetworkDefaultDataDir_WhenDatadirNotSet(t *testing.T) {
+	t.Setenv("BITFS_DATADIR", "")
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	if err := fs.Parse(nil); err != nil {
@@ -31,6 +32,7 @@ func TestApplyNetworkDefaultDataDir_WhenDatadirNotSet(t *testing.T) {
 }
 
 func TestApplyNetworkDefaultDataDir_WhenDatadirSet(t *testing.T) {
+	t.Setenv("BITFS_DATADIR", "")
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	if err := fs.Parse([]string{"--datadir", "/tmp/custom-bitfs"}); err != nil {
@@ -40,5 +42,19 @@ func TestApplyNetworkDefaultDataDir_WhenDatadirSet(t *testing.T) {
 	applyNetworkDefaultDataDir(fs, dataDir, "testnet")
 	if *dataDir != "/tmp/custom-bitfs" {
 		t.Fatalf("datadir = %q, want %q", *dataDir, "/tmp/custom-bitfs")
+	}
+}
+
+func TestApplyNetworkDefaultDataDir_EnvOverride(t *testing.T) {
+	t.Setenv("BITFS_DATADIR", "/tmp/env-bitfs")
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
+	if err := fs.Parse(nil); err != nil {
+		t.Fatalf("parse flags: %v", err)
+	}
+
+	applyNetworkDefaultDataDir(fs, dataDir, "testnet")
+	if *dataDir != "/tmp/env-bitfs" {
+		t.Fatalf("datadir = %q, want %q", *dataDir, "/tmp/env-bitfs")
 	}
 }
