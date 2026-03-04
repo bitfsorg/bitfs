@@ -37,6 +37,9 @@ func runVerify(args []string) int {
 		return exitUsageError
 	}
 
+	// If --datadir was not explicitly provided, pick a network-specific default.
+	applyNetworkDefaultDataDir(fs, dataDir, *netName)
+
 	txid := fs.Arg(0)
 
 	pass, err := resolvePassword(*password)

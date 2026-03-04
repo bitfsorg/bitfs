@@ -26,9 +26,10 @@ import (
 // This simulates the `bitfs fund` command pattern where the engine does not
 // control the funding transaction -- it only discovers and registers the UTXO.
 func TestFundExternalUTXO(t *testing.T) {
-	node := testutil.NewTestNode(t)
+	node := testutil.NewRequiredTestNode(t)
+	fundAmount := testutil.LoadConfig().FundAmount
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), testutil.NetworkAwareTestTimeout(120*time.Second))
 	defer cancel()
 
 	// ==================================================================
@@ -49,38 +50,37 @@ func TestFundExternalUTXO(t *testing.T) {
 	t.Logf("fee address: %s", feeAddr.AddressString)
 
 	// ==================================================================
-	// Step 3: Fund externally via regtest RPC (NOT through the engine).
-	// This simulates receiving BSV from an exchange or another wallet.
+	// Step 3: Fund externally (NOT through the engine).
+	// On regtest this uses node wallet + mining. On live networks this uses
+	// WIF funding through the TestNode implementation.
 	// ==================================================================
 	err = node.ImportAddress(ctx, feeAddr.AddressString)
-	require.NoError(t, err, "import address into regtest node")
+	require.NoError(t, err, "import address")
 
-	// Mine 101 blocks so coinbase rewards are spendable.
-	mineAddr, err := node.NewAddress(ctx)
-	require.NoError(t, err, "generate mining address")
-	_, err = node.MineBlocks(ctx, 101, mineAddr)
-	require.NoError(t, err, "mine 101 blocks")
-
-	// Send 0.01 BSV to the engine's fee address from the node's wallet.
-	fundTxID, err := node.SendToAddress(ctx, feeAddr.AddressString, 0.01)
-	require.NoError(t, err, "send 0.01 BSV to fee address externally")
-	t.Logf("external funding txid: %s", fundTxID)
-
-	// Wait for funding tx to confirm.
-	require.NoError(t, node.WaitForConfirmation(ctx, fundTxID, 1), "wait for funding confirmation")
+	fundedUTXO, err := node.Fund(ctx, feeAddr.AddressString, fundAmount)
+	require.NoError(t, err, "fund fee address externally")
+	t.Logf("external funding txid: %s", fundedUTXO.TxID)
 
 	// ==================================================================
-	// Step 4: Retrieve UTXO details from RPC.
+	// Step 4: Use funding UTXO details (RPC/indexer refresh may lag on live networks).
 	// ==================================================================
+	externalUTXO := *fundedUTXO
 	utxos, err := node.ListUnspent(ctx, feeAddr.AddressString)
 	require.NoError(t, err, "list unspent for fee address")
-	require.NotEmpty(t, utxos, "should have at least one UTXO after external funding")
-
-	regtestUTXO := utxos[0]
-	t.Logf("external UTXO: %s:%d = %.8f BSV", regtestUTXO.TxID, regtestUTXO.Vout, regtestUTXO.Amount)
+	if len(utxos) == 0 {
+		t.Logf("listunspent not yet updated on %s; using funded UTXO directly", node.Network())
+	} else {
+		for _, u := range utxos {
+			if u.TxID == fundedUTXO.TxID && u.Vout == fundedUTXO.Vout {
+				externalUTXO = u
+				break
+			}
+		}
+	}
+	t.Logf("external UTXO: %s:%d = %.8f BSV", externalUTXO.TxID, externalUTXO.Vout, externalUTXO.Amount)
 
 	// Convert display txid (big-endian) to internal byte order (little-endian).
-	txidBytes, err := hex.DecodeString(regtestUTXO.TxID)
+	txidBytes, err := hex.DecodeString(externalUTXO.TxID)
 	require.NoError(t, err, "decode txid hex")
 	for i, j := 0, len(txidBytes)-1; i < j; i, j = i+1, j-1 {
 		txidBytes[i], txidBytes[j] = txidBytes[j], txidBytes[i]
@@ -90,7 +90,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	scriptPubKey, err := tx.BuildP2PKHScript(feeKey.PublicKey)
 	require.NoError(t, err, "build P2PKH script")
 
-	amountSat := uint64(regtestUTXO.Amount * 1e8)
+	amountSat := uint64(externalUTXO.Amount * 1e8)
 
 	// ==================================================================
 	// Step 5: Manually register the UTXO in engine state.
@@ -99,7 +99,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	// ==================================================================
 	eng.State.AddUTXO(&vault.UTXOState{
 		TxID:         hex.EncodeToString(txidBytes),
-		Vout:         regtestUTXO.Vout,
+		Vout:         externalUTXO.Vout,
 		Amount:       amountSat,
 		ScriptPubKey: hex.EncodeToString(scriptPubKey),
 		PubKeyHex:    hex.EncodeToString(feeKey.PublicKey.Compressed()),
@@ -127,7 +127,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	// Construct the tx.UTXO for the transaction builder.
 	feeUTXO := &tx.UTXO{
 		TxID:         txidBytes,
-		Vout:         regtestUTXO.Vout,
+		Vout:         externalUTXO.Vout,
 		Amount:       amountSat,
 		ScriptPubKey: scriptPubKey,
 		PrivateKey:   feeKey.PrivateKey,
@@ -204,7 +204,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	// Summary
 	// ==================================================================
 	t.Logf("--- External UTXO Funding Test Summary ---")
-	t.Logf("External funding TxID: %s", fundTxID)
+	t.Logf("External funding TxID: %s", externalUTXO.TxID)
 	t.Logf("Root Tx TxID:          %s", broadcastTxID)
 	t.Logf("Inputs:                %d", parsedTx.InputCount())
 	t.Logf("Outputs:               %d", parsedTx.OutputCount())

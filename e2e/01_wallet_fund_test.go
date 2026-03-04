@@ -18,6 +18,7 @@ import (
 func TestWalletFund(t *testing.T) {
 	node := testutil.NewTestNode(t)
 	ctx := context.Background()
+	fundAmount := testutil.LoadConfig().FundAmount
 
 	// Step 1: Create a real HD wallet.
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
@@ -45,16 +46,22 @@ func TestWalletFund(t *testing.T) {
 	require.NoError(t, err, "import address")
 
 	// Step 5: Fund the address via node.Fund (handles mining on regtest,
-	// faucet/WIF on live networks).
-	_, err = node.Fund(ctx, addr.AddressString, 0.01)
+	// WIF funding on live networks).
+	fundedUTXO, err := node.Fund(ctx, addr.AddressString, fundAmount)
 	require.NoError(t, err, "fund address")
+	require.NotNil(t, fundedUTXO, "funded UTXO should not be nil")
 
-	// Step 6: Verify the UTXO exists.
+	// Step 6: Prefer node.Fund result, then optionally verify via listunspent.
+	utxo := fundedUTXO
 	utxos, err := node.ListUnspent(ctx, addr.AddressString)
 	require.NoError(t, err)
-	require.NotEmpty(t, utxos, "should have at least one UTXO")
-	require.InDelta(t, 0.01, utxos[0].Amount, 0.0001)
+	if len(utxos) > 0 {
+		utxo = &utxos[0]
+	} else {
+		t.Logf("listunspent not yet updated on %s; using funded UTXO directly", node.Network())
+	}
+	require.InDelta(t, fundAmount, utxo.Amount, 0.0001)
 
 	// Step 7: Log the UTXO details.
-	t.Logf("UTXO: %s:%d = %.8f BSV", utxos[0].TxID, utxos[0].Vout, utxos[0].Amount)
+	t.Logf("UTXO: %s:%d = %.8f BSV", utxo.TxID, utxo.Vout, utxo.Amount)
 }

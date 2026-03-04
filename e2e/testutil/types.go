@@ -11,3 +11,19 @@ type UTXO struct {
 	Amount        float64 `json:"amount"`
 	Confirmations int     `json:"confirmations"`
 }
+
+// TxStatus represents confirmation state for a transaction.
+type TxStatus struct {
+	Confirmations int64  `json:"confirmations"`
+	BlockHash     string `json:"blockhash"`
+	BlockHeight   uint64 `json:"blockheight"`
+}
+
+// MerkleProof contains the normalized merkle proof needed by SPV verification.
+// TxID and Nodes are in internal byte order (little-endian).
+type MerkleProof struct {
+	TxID      []byte
+	Index     uint32
+	Nodes     [][]byte
+	BlockHash string // display hex
+}

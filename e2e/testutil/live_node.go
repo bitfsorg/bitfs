@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
+
+	libnetwork "github.com/bitfsorg/libbitfs-go/network"
 )
 
 // liveNode implements TestNode for testnet and mainnet BSV networks.
-// Unlike RegtestNode, it cannot mine blocks and must wait for real
-// confirmations by polling the node.
+// Unlike RegtestNode, it cannot mine blocks.
 type liveNode struct {
 	rpc    *RPCClient
 	config *Config
@@ -41,71 +43,55 @@ func (n *liveNode) IsAvailable(ctx context.Context) bool {
 	return err == nil && hash != ""
 }
 
-// Fund sends the specified amount to addr using the configured funding strategy.
-// On testnet, it tries faucet first (if configured), then falls back to WIF wallet.
-// On mainnet, it only uses WIF wallet (faucet is never used).
-// After funding, it waits for 1 confirmation.
+// Fund sends the specified amount to addr from the configured funding WIF.
+// On live networks BITFS_E2E_FUND_WIF is required.
 func (n *liveNode) Fund(ctx context.Context, addr string, amount float64) (*UTXO, error) {
-	var txid string
-	funded := false
-
-	// Try faucet first (testnet only, when configured).
-	if n.config.FaucetURL != "" && !n.config.IsMainnet() {
-		if err := faucetFund(ctx, n.config.FaucetURL, addr, amount); err == nil {
-			funded = true
-		}
-		// If faucet fails, fall through to WIF.
+	if n.config.FundWIF == "" {
+		return nil, fmt.Errorf("BITFS_E2E_FUND_WIF is required on %s", n.config.Network)
 	}
 
-	// Try WIF wallet if faucet didn't work.
-	if !funded && n.config.FundWIF != "" {
-		var err error
-		txid, err = fundFromWIF(ctx, n.rpc, n.config.FundWIF, addr, amount)
-		if err != nil {
-			return nil, fmt.Errorf("fund from WIF: %w", err)
-		}
-		funded = true
+	txid, rawHex, err := fundFromWIF(ctx, n.rpc, n.config.FundWIF, addr, amount)
+	if err != nil {
+		return nil, fmt.Errorf("fund from WIF: %w", err)
 	}
 
-	if !funded {
-		return nil, fmt.Errorf("no funding source available on %s (set BITFS_E2E_FAUCET_URL or BITFS_E2E_FUND_WIF)", n.config.Network)
+	if err := n.WaitForConfirmation(ctx, txid, 1); err != nil {
+		return nil, fmt.Errorf("wait for funding propagation: %w", err)
 	}
 
-	// Wait for the funding tx to confirm if we have a txid.
-	if txid != "" {
-		if err := n.WaitForConfirmation(ctx, txid, 1); err != nil {
-			return nil, fmt.Errorf("wait for funding confirmation: %w", err)
-		}
-	} else {
-		// Faucet doesn't return txid; poll ListUnspent directly.
-		utxo, err := n.waitForUTXO(ctx, addr)
-		if err != nil {
-			return nil, fmt.Errorf("wait for faucet UTXO: %w", err)
-		}
+	utxo, parseErr := fundingUTXOFromRawTx(rawHex, addr, txid)
+	if parseErr == nil {
 		return utxo, nil
 	}
 
-	// Retrieve the confirmed UTXO.
+	// Fallback for providers where raw parsing fails unexpectedly.
 	utxos, err := n.ListUnspent(ctx, addr)
 	if err != nil {
 		return nil, fmt.Errorf("list unspent: %w", err)
 	}
-	if len(utxos) == 0 {
-		return nil, fmt.Errorf("no UTXOs found for %s after funding", addr)
+	for i := range utxos {
+		if strings.EqualFold(utxos[i].TxID, txid) {
+			return &utxos[i], nil
+		}
 	}
-	return &utxos[0], nil
+	if len(utxos) > 0 {
+		return &utxos[0], nil
+	}
+	return nil, fmt.Errorf("no UTXOs found for %s after funding (parse raw tx failed: %v)", addr, parseErr)
 }
 
-// WaitForConfirmation polls getrawtransaction until the given txid has at
-// least minConf confirmations. It uses config.ConfirmTimeout as the deadline.
+// WaitForConfirmation on live RPC nodes waits for transaction propagation,
+// not mined confirmations. It returns once getrawtransaction can locate txid.
 func (n *liveNode) WaitForConfirmation(ctx context.Context, txid string, minConf int) error {
+	_ = minConf // live providers don't require confirmed blocks for most e2e flows
+
 	deadline := time.After(n.config.ConfirmTimeout)
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
-		confs, err := n.getConfirmations(ctx, txid)
-		if err == nil && confs >= minConf {
+		_, err := n.GetTxStatus(ctx, txid)
+		if err == nil {
 			return nil
 		}
 
@@ -113,8 +99,7 @@ func (n *liveNode) WaitForConfirmation(ctx context.Context, txid string, minConf
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-deadline:
-			return fmt.Errorf("timeout waiting for %d confirmations on %s (got %d after %v)",
-				minConf, txid, confs, n.config.ConfirmTimeout)
+			return fmt.Errorf("timeout waiting for tx propagation on %s after %v", txid, n.config.ConfirmTimeout)
 		case <-ticker.C:
 			// poll again
 		}
@@ -140,7 +125,8 @@ func (n *liveNode) NewAddress(ctx context.Context) (string, error) {
 // ListUnspent returns the unspent outputs for the given address.
 func (n *liveNode) ListUnspent(ctx context.Context, addr string) ([]UTXO, error) {
 	var utxos []UTXO
-	params := []interface{}{1, 9999999, []string{addr}}
+	// Include unconfirmed UTXOs on live networks to avoid mined-confirmation waits.
+	params := []interface{}{0, 9999999, []string{addr}}
 	if err := n.rpc.Call(ctx, "listunspent", params, &utxos); err != nil {
 		return nil, fmt.Errorf("listunspent(%s): %w", addr, err)
 	}
@@ -160,6 +146,14 @@ func (n *liveNode) SendRawTransaction(ctx context.Context, rawTxHex string) (str
 // SendToAddress sends the given BTC amount to addr from the node's wallet.
 func (n *liveNode) SendToAddress(ctx context.Context, addr string, amount float64) (string, error) {
 	var txid string
+	if n.config.FundWIF != "" {
+		var err error
+		txid, _, err = fundFromWIF(ctx, n.rpc, n.config.FundWIF, addr, amount)
+		if err != nil {
+			return "", fmt.Errorf("fund from WIF: %w", err)
+		}
+		return txid, nil
+	}
 	params := []interface{}{addr, amount}
 	if err := n.rpc.Call(ctx, "sendtoaddress", params, &txid); err != nil {
 		return "", fmt.Errorf("sendtoaddress(%s, %f): %w", addr, amount, err)
@@ -179,6 +173,24 @@ func (n *liveNode) GetRawTransaction(ctx context.Context, txid string) ([]byte, 
 		return nil, fmt.Errorf("decode raw tx hex: %w", err)
 	}
 	return raw, nil
+}
+
+// GetTxStatus returns tx confirmation metadata from verbose getrawtransaction.
+func (n *liveNode) GetTxStatus(ctx context.Context, txid string) (*TxStatus, error) {
+	var result struct {
+		Confirmations int64  `json:"confirmations"`
+		BlockHash     string `json:"blockhash"`
+		BlockHeight   uint64 `json:"blockheight"`
+	}
+	params := []interface{}{txid, true}
+	if err := n.rpc.Call(ctx, "getrawtransaction", params, &result); err != nil {
+		return nil, fmt.Errorf("getrawtransaction verbose(%s): %w", txid, err)
+	}
+	return &TxStatus{
+		Confirmations: result.Confirmations,
+		BlockHash:     result.BlockHash,
+		BlockHeight:   result.BlockHeight,
+	}, nil
 }
 
 // GetBlockHeader returns the raw 80-byte block header for the given block hash.
@@ -205,6 +217,18 @@ func (n *liveNode) GetBlockHeaderVerbose(ctx context.Context, blockHash string) 
 	return result, nil
 }
 
+// GetBlockTxIDs returns all txids in the block (display hex).
+func (n *liveNode) GetBlockTxIDs(ctx context.Context, blockHash string) ([]string, error) {
+	var result struct {
+		Tx []string `json:"tx"`
+	}
+	params := []interface{}{blockHash, 1}
+	if err := n.rpc.Call(ctx, "getblock", params, &result); err != nil {
+		return nil, fmt.Errorf("getblock(%s): %w", blockHash, err)
+	}
+	return result.Tx, nil
+}
+
 // GetTxOutProof returns the BIP37-style Merkle proof for the given transaction.
 func (n *liveNode) GetTxOutProof(ctx context.Context, txid string) ([]byte, error) {
 	var proofHex string
@@ -217,6 +241,37 @@ func (n *liveNode) GetTxOutProof(ctx context.Context, txid string) ([]byte, erro
 		return nil, fmt.Errorf("decode txout proof hex: %w", err)
 	}
 	return proof, nil
+}
+
+// GetMerkleProof returns a normalized SPV merkle proof for txid.
+func (n *liveNode) GetMerkleProof(ctx context.Context, txid string) (*MerkleProof, error) {
+	proofBytes, err := n.GetTxOutProof(ctx, txid)
+	if err != nil {
+		return nil, err
+	}
+
+	txidBytes, err := hex.DecodeString(txid)
+	if err != nil {
+		return nil, fmt.Errorf("decode txid hex: %w", err)
+	}
+	reverseBytesInPlace(txidBytes)
+
+	_, txIndex, branches, _, err := libnetwork.ParseBIP37MerkleBlock(proofBytes, txidBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse BIP37 merkle block: %w", err)
+	}
+
+	status, err := n.GetTxStatus(ctx, txid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MerkleProof{
+		TxID:      txidBytes,
+		Index:     txIndex,
+		Nodes:     branches,
+		BlockHash: status.BlockHash,
+	}, nil
 }
 
 // GetBestBlockHash returns the hash of the best (tip) block.

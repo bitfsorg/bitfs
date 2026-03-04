@@ -6,8 +6,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	libnetwork "github.com/bitfsorg/libbitfs-go/network"
 )
 
 // TestNode is the unified interface for interacting with a BSV node across
@@ -19,7 +22,7 @@ type TestNode interface {
 	// IsAvailable returns true if the node is reachable and responding.
 	IsAvailable(ctx context.Context) bool
 	// Fund sends the specified amount to addr and waits for confirmation.
-	// On regtest it mines blocks; on live networks it uses faucet/WIF wallet.
+	// On regtest it mines blocks; on live networks it uses the configured WIF wallet.
 	Fund(ctx context.Context, addr string, amount float64) (*UTXO, error)
 	// WaitForConfirmation waits until the given txid has at least minConf confirmations.
 	// On regtest it mines blocks; on live networks it polls.
@@ -29,9 +32,12 @@ type TestNode interface {
 
 	SendRawTransaction(ctx context.Context, hex string) (string, error)
 	GetRawTransaction(ctx context.Context, txid string) ([]byte, error)
+	GetTxStatus(ctx context.Context, txid string) (*TxStatus, error)
 	GetTxOutProof(ctx context.Context, txid string) ([]byte, error)
+	GetMerkleProof(ctx context.Context, txid string) (*MerkleProof, error)
 	GetBlockHeader(ctx context.Context, hash string) ([]byte, error)
 	GetBlockHeaderVerbose(ctx context.Context, hash string) (map[string]interface{}, error)
+	GetBlockTxIDs(ctx context.Context, hash string) ([]string, error)
 	GetBestBlockHash(ctx context.Context) (string, error)
 	GetBlockHash(ctx context.Context, height int) (string, error)
 	GetBlockCount(ctx context.Context) (int64, error)
@@ -61,19 +67,54 @@ type RegtestNode struct {
 // and skips the test if the node is not available.
 func NewTestNode(t *testing.T) TestNode {
 	t.Helper()
+	return newTestNodeWithAvailabilityMode(t, true)
+}
+
+// NewRequiredTestNode creates a TestNode and fails the test if unavailable.
+// Unlike NewTestNode, it never marks the test as skipped.
+func NewRequiredTestNode(t *testing.T) TestNode {
+	t.Helper()
+	return newTestNodeWithAvailabilityMode(t, false)
+}
+
+func newTestNodeWithAvailabilityMode(t *testing.T, skipOnUnavailable bool) TestNode {
+	t.Helper()
 	cfg := LoadConfig()
-	rpc := NewRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPass)
 
 	var node TestNode
 	switch cfg.Network {
 	case "testnet", "mainnet":
-		node = newLiveNode(rpc, cfg)
+		if cfg.Provider == "woc" {
+			node = newWOCNode(cfg)
+		} else if cfg.Provider == "arc" {
+			node = newARCNode(cfg)
+		} else {
+			rpc := NewRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPass)
+			node = newLiveNode(rpc, cfg)
+		}
 	default:
+		rpc := NewRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPass)
 		node = &RegtestNode{rpc: rpc}
 	}
 
 	if !node.IsAvailable(context.Background()) {
-		t.Skipf("BSV %s node not available at %s", cfg.Network, cfg.RPCURL)
+		var msg string
+		switch cfg.Provider {
+		case "woc":
+			msg = fmt.Sprintf("BSV %s WOC provider not available at %s", cfg.Network, cfg.WOCBaseURL)
+		case "arc":
+			target := cfg.ARCBaseURL
+			if len(cfg.ARCBaseURLs) > 1 {
+				target = strings.Join(cfg.ARCBaseURLs, ", ")
+			}
+			msg = fmt.Sprintf("BSV %s ARC provider not available at %s", cfg.Network, target)
+		default:
+			msg = fmt.Sprintf("BSV %s node not available at %s", cfg.Network, cfg.RPCURL)
+		}
+		if skipOnUnavailable {
+			t.Skip(msg)
+		}
+		t.Fatal(msg)
 	}
 	return node
 }
@@ -204,6 +245,24 @@ func (n *RegtestNode) GetRawTransaction(ctx context.Context, txid string) ([]byt
 	return raw, nil
 }
 
+// GetTxStatus returns tx confirmation metadata from verbose getrawtransaction.
+func (n *RegtestNode) GetTxStatus(ctx context.Context, txid string) (*TxStatus, error) {
+	var result struct {
+		Confirmations int64  `json:"confirmations"`
+		BlockHash     string `json:"blockhash"`
+		BlockHeight   uint64 `json:"blockheight"`
+	}
+	params := []interface{}{txid, true}
+	if err := n.rpc.Call(ctx, "getrawtransaction", params, &result); err != nil {
+		return nil, fmt.Errorf("getrawtransaction verbose(%s): %w", txid, err)
+	}
+	return &TxStatus{
+		Confirmations: result.Confirmations,
+		BlockHash:     result.BlockHash,
+		BlockHeight:   result.BlockHeight,
+	}, nil
+}
+
 // GetBlockHeader returns the raw 80-byte block header for the given block hash.
 func (n *RegtestNode) GetBlockHeader(ctx context.Context, blockHash string) ([]byte, error) {
 	var headerHex string
@@ -230,6 +289,18 @@ func (n *RegtestNode) GetBlockHeaderVerbose(ctx context.Context, blockHash strin
 	return result, nil
 }
 
+// GetBlockTxIDs returns all txids in the block (display hex).
+func (n *RegtestNode) GetBlockTxIDs(ctx context.Context, blockHash string) ([]string, error) {
+	var result struct {
+		Tx []string `json:"tx"`
+	}
+	params := []interface{}{blockHash, 1}
+	if err := n.rpc.Call(ctx, "getblock", params, &result); err != nil {
+		return nil, fmt.Errorf("getblock(%s): %w", blockHash, err)
+	}
+	return result.Tx, nil
+}
+
 // GetTxOutProof returns the BIP37-style Merkle proof for the given transaction.
 // The transaction must be in the UTXO set or in the mempool.
 func (n *RegtestNode) GetTxOutProof(ctx context.Context, txid string) ([]byte, error) {
@@ -243,6 +314,37 @@ func (n *RegtestNode) GetTxOutProof(ctx context.Context, txid string) ([]byte, e
 		return nil, fmt.Errorf("decode txout proof hex: %w", err)
 	}
 	return proof, nil
+}
+
+// GetMerkleProof returns a normalized SPV merkle proof for txid.
+func (n *RegtestNode) GetMerkleProof(ctx context.Context, txid string) (*MerkleProof, error) {
+	proofBytes, err := n.GetTxOutProof(ctx, txid)
+	if err != nil {
+		return nil, err
+	}
+
+	txidBytes, err := hex.DecodeString(txid)
+	if err != nil {
+		return nil, fmt.Errorf("decode txid hex: %w", err)
+	}
+	reverseBytesInPlace(txidBytes)
+
+	_, txIndex, branches, _, err := libnetwork.ParseBIP37MerkleBlock(proofBytes, txidBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse BIP37 merkle block: %w", err)
+	}
+
+	status, err := n.GetTxStatus(ctx, txid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MerkleProof{
+		TxID:      txidBytes,
+		Index:     txIndex,
+		Nodes:     branches,
+		BlockHash: status.BlockHash,
+	}, nil
 }
 
 // GetBestBlockHash returns the hash of the best (tip) block.

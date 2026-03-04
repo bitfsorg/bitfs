@@ -39,7 +39,7 @@ regtest-down: ## Stop regtest node
 testnet: ## Start testnet node (RPC localhost:18333)
 	cd e2e && docker compose -f docker-compose.testnet.yml up -d
 	@echo "Testnet node syncing. RPC at localhost:18333 (user: bitfs, pass: bitfs)"
-	@echo "Use a faucet to fund: https://faucet.bitcoincloud.net"
+	@echo "Set BITFS_E2E_FUND_WIF to a funded testnet key before running e2e."
 
 testnet-down: ## Stop testnet node
 	cd e2e && docker compose -f docker-compose.testnet.yml down

@@ -86,6 +86,7 @@ func FundEngineWallet(t *testing.T, eng *vault.Vault, node TestNode) {
 	t.Helper()
 
 	ctx := context.Background()
+	fundAmount := LoadConfig().FundAmount
 
 	// Derive the first fee key (external chain, index 0).
 	feeKey, err := eng.Wallet.DeriveFeeKey(wallet.ExternalChain, 0)
@@ -100,8 +101,8 @@ func FundEngineWallet(t *testing.T, eng *vault.Vault, node TestNode) {
 	err = node.ImportAddress(ctx, feeAddr.AddressString)
 	require.NoError(t, err, "import address")
 
-	// Fund the address (regtest: mines blocks, live: faucet/WIF).
-	fundedUTXO, err := node.Fund(ctx, feeAddr.AddressString, 0.01)
+	// Fund the address (regtest: mines blocks, live: WIF funding).
+	fundedUTXO, err := node.Fund(ctx, feeAddr.AddressString, fundAmount)
 	require.NoError(t, err, "fund fee address")
 	t.Logf("funded UTXO: %s:%d = %.8f BSV", fundedUTXO.TxID, fundedUTXO.Vout, fundedUTXO.Amount)
 

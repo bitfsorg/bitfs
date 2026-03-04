@@ -30,6 +30,7 @@ func runWalletFund(args []string) int {
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL (override)")
 	rpcUser := fs.String("rpc-user", "", "RPC username (override)")
 	rpcPass := fs.String("rpc-pass", "", "RPC password (override)")
+	addressOnly := fs.Bool("address-only", false, "print deposit address and QR only (skip network refresh)")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
@@ -74,6 +75,10 @@ func runWalletFund(args []string) int {
 
 	// Show network-specific funding instructions.
 	printFundingInstructions(netName, addr.AddressString)
+
+	if *addressOnly {
+		return exitSuccess
+	}
 
 	// Wait for user confirmation.
 	fmt.Printf("\nPress Enter after sending payment...")
@@ -164,25 +169,32 @@ func printFundingInstructions(netName, address string) {
 		fmt.Printf("     docker exec bitfs-regtest bitcoin-cli -regtest -rpcuser=bitfs -rpcpassword=bitfs generatetoaddress 101 %s\n", address)
 
 	case "testnet":
-		fmt.Println("Testnet — start a local node and use a faucet:")
+		fmt.Println("Testnet — send tBSV from your own funding source:")
 		fmt.Println()
 		fmt.Println("  1. Start testnet node (if not running):")
 		fmt.Println("     make testnet")
 		fmt.Println()
-		fmt.Println("  2. Get tBSV from faucet:")
-		fmt.Println("     https://faucet.bitcoincloud.net")
-		fmt.Printf("     Send to: %s\n", address)
+		fmt.Println("  2. Send tBSV to this address:")
+		fmt.Printf("     %s\n", address)
+		fmt.Println()
+		fmt.Println("Scan QR code to send testnet BSV:")
+		fmt.Println()
+		printAddressQR(address)
 
 	default: // mainnet
-		uri := "bitcoin:" + address
 		fmt.Println("Scan QR code with a BSV wallet (HandCash, Sensilet, etc.):")
 		fmt.Println()
-		qrterminal.GenerateWithConfig(uri, qrterminal.Config{
-			Level:      qrterminal.M,
-			Writer:     os.Stdout,
-			HalfBlocks: true,
-			BlackChar:  qrterminal.BLACK_BLACK,
-			WhiteChar:  qrterminal.WHITE_WHITE,
-		})
+		printAddressQR(address)
 	}
+}
+
+func printAddressQR(address string) {
+	uri := "bitcoin:" + address
+	qrterminal.GenerateWithConfig(uri, qrterminal.Config{
+		Level:      qrterminal.M,
+		Writer:     os.Stdout,
+		HalfBlocks: true,
+		BlackChar:  qrterminal.BLACK_BLACK,
+		WhiteChar:  qrterminal.WHITE_WHITE,
+	})
 }

@@ -34,20 +34,31 @@ Tests are controlled via environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BITFS_E2E_NETWORK` | `regtest` | Network: `regtest`, `testnet`, `mainnet` |
+| `BITFS_E2E_PROVIDER` | `rpc` on regtest, `arc` on live | Node provider: `rpc`, `woc`, `arc` |
 | `BITFS_E2E_RPC_URL` | per network | RPC endpoint URL |
 | `BITFS_E2E_RPC_USER` | `bitfs` | RPC username |
 | `BITFS_E2E_RPC_PASS` | `bitfs` | RPC password |
-| `BITFS_E2E_FAUCET_URL` | — | Testnet faucet API URL (optional) |
-| `BITFS_E2E_FUND_WIF` | — | Pre-funded wallet WIF key |
+| `BITFS_E2E_ARC_BASE_URL` | per live network | ARC API base URL |
+| `BITFS_E2E_ARC_BASE_URLS` | — | Comma-separated ARC base URLs for failover (primary first) |
+| `BITFS_E2E_ARC_API_KEY` | — | ARC API key (optional) |
+| `BITFS_E2E_ARC_CALLBACK_URL` | — | ARC callback URL (optional) |
+| `BITFS_E2E_ARC_CALLBACK_TOKEN` | — | ARC callback token (optional) |
+| `BITFS_E2E_ARC_WAIT_FOR` | `SEEN_ON_NETWORK` | ARC `X-WaitFor` status |
+| `BITFS_E2E_BHS_BASE_URL` | — | BHS API base URL (optional) |
+| `BITFS_E2E_BHS_API_KEY` | `BITFS_E2E_ARC_API_KEY` | BHS API key (optional) |
+| `BITFS_E2E_WOC_BASE_URL` | per live network | WoC API base URL override |
+| `BITFS_E2E_WOC_API_KEY` | — | WoC API key (optional; helps avoid 429) |
+| `BITFS_E2E_FUND_WIF` | — | Funding wallet WIF key (required on live networks) |
+| `BITFS_E2E_FUND_AMOUNT` | `0.00006` | Funding amount per `Fund()` call (BSV) |
 | `BITFS_E2E_CONFIRM_TIMEOUT` | per network | Confirmation wait timeout |
 
 ### Network Defaults
 
-| Network | RPC URL | Confirm Timeout | Funding |
-|---------|---------|-----------------|---------|
-| regtest | `http://localhost:18332` | 30s | Mining |
-| testnet | `http://localhost:18333` | 30m | Faucet → WIF fallback |
-| mainnet | `http://localhost:8332` | 60m | WIF only |
+| Network | Default Provider | Endpoint Defaults | Confirm Timeout |
+|---------|------------------|-------------------|-----------------|
+| regtest | `rpc` | `BITFS_E2E_RPC_URL=http://localhost:18332` | 30s |
+| testnet | `arc` | `BITFS_E2E_ARC_BASE_URL=https://testnet.arc.gorillapool.io/v1` | 30m |
+| mainnet | `arc` | `BITFS_E2E_ARC_BASE_URLS=https://arc.gorillapool.io/v1,https://arc.taal.com/v1` | 60m |
 
 ### Running on Testnet
 
@@ -56,7 +67,11 @@ Tests are controlled via environment variables:
 cd e2e && docker compose -f docker-compose.testnet.yml up -d
 
 # Run tests
-BITFS_E2E_NETWORK=testnet go test -tags e2e ./e2e/... -v -timeout 60m
+BITFS_E2E_NETWORK=testnet \
+  BITFS_E2E_PROVIDER=arc \
+  BITFS_E2E_ARC_BASE_URL=https://testnet.arc.gorillapool.io/v1 \
+  BITFS_E2E_FUND_WIF=c... \
+  go test -tags e2e ./e2e/... -v -timeout 60m
 ```
 
 ### Running on Mainnet
@@ -64,6 +79,8 @@ BITFS_E2E_NETWORK=testnet go test -tags e2e ./e2e/... -v -timeout 60m
 ```bash
 # Requires a pre-funded wallet (WIF private key)
 BITFS_E2E_NETWORK=mainnet \
+  BITFS_E2E_PROVIDER=arc \
+  BITFS_E2E_ARC_BASE_URLS=https://arc.gorillapool.io/v1,https://arc.taal.com/v1 \
   BITFS_E2E_FUND_WIF=L... \
   go test -tags e2e ./e2e/... -v -timeout 120m
 ```
@@ -138,15 +155,21 @@ BITFS_E2E_NETWORK=mainnet \
 **Tests skip instead of running**
 - If the node is unreachable, tests gracefully skip with a descriptive message.
 - Regtest: start with `docker compose up -d`
-- Testnet/mainnet: ensure RPC endpoint is reachable and credentials are correct.
+- Testnet/mainnet:
+  - ARC mode: ensure `BITFS_E2E_ARC_BASE_URL` (or every URL in `BITFS_E2E_ARC_BASE_URLS`) is reachable.
+  - RPC mode: ensure RPC endpoint is reachable and credentials are correct.
 
 **RPC authentication errors**
 - The default credentials are `bitfs`/`bitfs`. Override with `BITFS_E2E_RPC_USER`
   and `BITFS_E2E_RPC_PASS` environment variables.
 
+**ARC authentication errors**
+- If your ARC endpoint requires auth, set `BITFS_E2E_ARC_API_KEY`.
+- For callback auth, set `BITFS_E2E_ARC_CALLBACK_TOKEN`.
+
 **Testnet/mainnet funding fails**
 - Ensure `BITFS_E2E_FUND_WIF` contains a valid WIF private key with sufficient
-  balance, or configure `BITFS_E2E_FAUCET_URL` for testnet.
+  balance on its corresponding funding address.
 
 ## Architecture
 
@@ -162,14 +185,16 @@ e2e/
 │   ├── types.go                    Shared types (UTXO)
 │   ├── node.go                     TestNode interface + RegtestNode
 │   ├── live_node.go                liveNode (testnet/mainnet)
-│   ├── faucet.go                   Faucet funding adapter
+│   ├── arc_client.go               ARC REST client
+│   ├── arc_node.go                 arcNode (ARC proof-first provider)
+│   ├── bhs_client.go               BHS header client (optional)
 │   ├── funder.go                   WIF wallet funding
 │   └── engine_helpers.go           Vault + wallet setup helpers
 └── *_test.go                       25 test files gated by `e2e` tag
 ```
 
 - **TestNode interface** abstracts network differences. `RegtestNode` mines
-  blocks for funding/confirmation; `liveNode` uses faucet/WIF funding and
-  polls for confirmations.
+  blocks for funding/confirmation; `arcNode` uses ARC broadcast + merklePath
+  proof readiness on live networks (with optional BHS/WoC read fallbacks).
 - **Build tag `e2e`** gates all test files from regular `go test ./...` runs.
 - Tests are **independent** but ordered by complexity.

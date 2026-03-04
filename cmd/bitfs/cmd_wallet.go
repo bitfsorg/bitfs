@@ -100,6 +100,9 @@ func runWalletInit(args []string) int {
 		return exitUsageError
 	}
 
+	// If --datadir was not explicitly provided, pick a network-specific default.
+	applyNetworkDefaultDataDir(fs, dataDir, *netName)
+
 	// Check if wallet already exists.
 	walletPath := filepath.Join(*dataDir, "wallet.enc")
 	if _, err := os.Stat(walletPath); err == nil {

@@ -41,7 +41,7 @@ func setupFundedWallet(t *testing.T, ctx context.Context, node testutil.TestNode
 
 // getFundedUTXO funds the given address via the test node and returns
 // a tx.UTXO ready for use in transaction building. It uses node.Fund which
-// handles mining on regtest or faucet/WIF on live networks.
+// handles mining on regtest or WIF funding on live networks.
 //
 // The returned UTXO has TxID (internal byte order), Vout, Amount (satoshis),
 // ScriptPubKey, and PrivateKey all populated.
@@ -49,13 +49,14 @@ func setupFundedWallet(t *testing.T, ctx context.Context, node testutil.TestNode
 // This helper is designed to be reused by Task 7+ tests.
 func getFundedUTXO(t *testing.T, ctx context.Context, node testutil.TestNode, addr string, kp *wallet.KeyPair) *tx.UTXO {
 	t.Helper()
+	fundAmount := testutil.LoadConfig().FundAmount
 
 	// Import the address so the node can track UTXOs for it.
 	err := node.ImportAddress(ctx, addr)
 	require.NoError(t, err, "import address")
 
-	// Fund the address (regtest: mines blocks, live: faucet/WIF).
-	fundedUTXO, err := node.Fund(ctx, addr, 0.01)
+	// Fund the address (regtest: mines blocks, live: WIF funding).
+	fundedUTXO, err := node.Fund(ctx, addr, fundAmount)
 	require.NoError(t, err, "fund address")
 	t.Logf("funded UTXO: %s:%d = %.8f BSV", fundedUTXO.TxID, fundedUTXO.Vout, fundedUTXO.Amount)
 
