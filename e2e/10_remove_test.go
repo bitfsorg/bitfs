@@ -78,7 +78,7 @@ func TestRemoveFile(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -113,7 +113,7 @@ func TestRemoveFile(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, dirPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx")
 
@@ -151,7 +151,7 @@ func TestRemoveFile(t *testing.T) {
 	fileBatch.AddSelfUpdate(dirKey.PublicKey, rootResult.TxID, dirPayload, dirNodeUTXO, dirKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file+dir-refresh tx")
 
@@ -188,7 +188,7 @@ func TestRemoveFile(t *testing.T) {
 		removeBatch.AddSelfUpdate(dirKey.PublicKey, rootResult.TxID, removedPayload, dirNodeUTXORefresh, dirKey.PrivateKey)
 		removeBatch.AddFeeInput(fileChangeUTXO)
 		removeBatch.SetChange(feeKey.PublicKey.Hash())
-		removeBatch.SetFeeRate(1)
+		removeBatch.SetFeeRate(100)
 		removeResult, err := removeBatch.Build()
 		require.NoError(t, err, "build remove-file tx")
 		require.NotEmpty(t, removeResult.RawTx)
@@ -310,7 +310,7 @@ func TestRemoveDirectory(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -345,7 +345,7 @@ func TestRemoveDirectory(t *testing.T) {
 	dirParentBatch.AddCreateChild(dirParentKey.PublicKey, rootResult.TxID, dirParentPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirParentBatch.AddFeeInput(changeUTXO)
 	dirParentBatch.SetChange(feeKey.PublicKey.Hash())
-	dirParentBatch.SetFeeRate(1)
+	dirParentBatch.SetFeeRate(100)
 	dirParentResult, err := dirParentBatch.Build()
 	require.NoError(t, err, "build dir_parent tx")
 
@@ -382,7 +382,7 @@ func TestRemoveDirectory(t *testing.T) {
 	dirChildBatch.AddSelfUpdate(dirParentKey.PublicKey, rootResult.TxID, dirParentPayload, dirParentNodeUTXO, dirParentKey.PrivateKey)
 	dirChildBatch.AddFeeInput(dirParentChangeUTXO)
 	dirChildBatch.SetChange(feeKey.PublicKey.Hash())
-	dirChildBatch.SetFeeRate(1)
+	dirChildBatch.SetFeeRate(100)
 	dirChildResult, err := dirChildBatch.Build()
 	require.NoError(t, err, "build dir_child+parent-refresh tx")
 
@@ -419,7 +419,7 @@ func TestRemoveDirectory(t *testing.T) {
 		removeBatch.AddSelfUpdate(dirParentKey.PublicKey, rootResult.TxID, removedPayload, dirParentNodeUTXORefresh, dirParentKey.PrivateKey)
 		removeBatch.AddFeeInput(dirChildChangeUTXO)
 		removeBatch.SetChange(feeKey.PublicKey.Hash())
-		removeBatch.SetFeeRate(1)
+		removeBatch.SetFeeRate(100)
 		removeResult, err := removeBatch.Build()
 		require.NoError(t, err, "build remove-dir tx")
 		require.NotEmpty(t, removeResult.RawTx)
@@ -545,7 +545,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -580,7 +580,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, dirPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx")
 
@@ -617,7 +617,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	fileBatch.AddSelfUpdate(dirKey.PublicKey, rootResult.TxID, dirPayload, dirNodeUTXO, dirKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file+dir-refresh tx")
 
@@ -652,7 +652,7 @@ func TestRemoveAndVerifyDAG(t *testing.T) {
 	removeBatch.AddSelfUpdate(dirKey.PublicKey, rootResult.TxID, removedPayload, dirNodeUTXORefresh, dirKey.PrivateKey)
 	removeBatch.AddFeeInput(fileChangeUTXO)
 	removeBatch.SetChange(feeKey.PublicKey.Hash())
-	removeBatch.SetFeeRate(1)
+	removeBatch.SetFeeRate(100)
 	removeResult, err := removeBatch.Build()
 	require.NoError(t, err, "build remove tx")
 

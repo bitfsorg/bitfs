@@ -81,7 +81,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	rootBatch.AddCreateRoot(sellerRootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(sellerFeeUTXO)
 	rootBatch.SetChange(sellerFeeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build seller root tx")
 
@@ -138,7 +138,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 	fileBatch.AddCreateChild(sellerFileKey.PublicKey, rootResult.TxID, filePayload, rootNodeUTXO, sellerRootKey.PrivateKey)
 	fileBatch.AddFeeInput(changeUTXO)
 	fileBatch.SetChange(sellerFeeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file node tx")
 
@@ -266,7 +266,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 			ScriptPubKey: buyerUTXO.ScriptPubKey,
 		}},
 		ChangeAddr: changePKH,
-		FeeRate:    1,
+		FeeRate:    100,
 		InvoiceID:  invoiceIDBytes,
 	})
 	require.NoError(t, err, "build HTLC funding tx")
@@ -295,7 +295,7 @@ func TestPaidPurchaseFlow(t *testing.T) {
 		FileTxID:      fileTxID,
 		SellerPrivKey: sellerFeeKey.PrivateKey,
 		OutputAddr:    sellerPKH,
-		FeeRate:       1,
+		FeeRate:       100,
 	})
 	require.NoError(t, err, "build seller claim tx")
 
@@ -655,7 +655,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 			ScriptPubKey: buyerUTXO.ScriptPubKey,
 		}},
 		ChangeAddr: buyerPKH,
-		FeeRate:    1,
+		FeeRate:    100,
 		InvoiceID:  invoiceID,
 	})
 	require.NoError(t, err, "build HTLC funding tx")
@@ -680,7 +680,7 @@ func TestPaidPurchase_BuyerRefund(t *testing.T) {
 		BuyerPrivKey:  buyerFeeKey.PrivateKey,
 		OutputAddr:    buyerPKH,
 		Timeout:       timeout,
-		FeeRate:       1,
+		FeeRate:       100,
 	})
 	require.NoError(t, err, "build buyer on-chain refund tx")
 

@@ -63,7 +63,7 @@ func TestMultipleUpdates(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, []byte("self-update chain test root"))
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -95,7 +95,7 @@ func TestMultipleUpdates(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, []byte("self-update chain test dir"), rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx")
 
@@ -136,7 +136,7 @@ func TestMultipleUpdates(t *testing.T) {
 	fileBatch.AddCreateChild(fileKey.PublicKey, dirResult.TxID, v0Payload, dirNodeUTXO, dirKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file tx")
 
@@ -193,7 +193,7 @@ func TestMultipleUpdates(t *testing.T) {
 			updateBatch.AddSelfUpdate(fileKey.PublicKey, dirResult.TxID, payload, curNodeUTXO, fileKey.PrivateKey)
 			updateBatch.AddFeeInput(curFeeUTXO)
 			updateBatch.SetChange(feeKey.PublicKey.Hash())
-			updateBatch.SetFeeRate(1)
+			updateBatch.SetFeeRate(100)
 			updateResult, err := updateBatch.Build()
 			require.NoError(t, err, "build self-update tx %s", ver.label)
 
@@ -327,7 +327,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, []byte("identity test root"))
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -356,7 +356,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, []byte("identity test dir"), rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(rootChangeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx")
 
@@ -393,7 +393,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	fileBatch.AddCreateChild(fileKey.PublicKey, dirResult.TxID, origPayload, dirNodeUTXO, dirKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file tx")
 
@@ -449,7 +449,7 @@ func TestUpdatePreservesIdentity(t *testing.T) {
 	updateBatch.AddSelfUpdate(fileKey.PublicKey, dirResult.TxID, updPayload, fileNodeUTXO, fileKey.PrivateKey)
 	updateBatch.AddFeeInput(fileChangeUTXO)
 	updateBatch.SetChange(feeKey.PublicKey.Hash())
-	updateBatch.SetFeeRate(1)
+	updateBatch.SetFeeRate(100)
 	updateResult, err := updateBatch.Build()
 	require.NoError(t, err, "build self-update tx")
 

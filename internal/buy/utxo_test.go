@@ -20,7 +20,7 @@ func TestSelectUTXOs_SingleLargeUTXO(t *testing.T) {
 		},
 	}
 
-	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 1)
+	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 100)
 	require.NoError(t, err)
 	assert.Len(t, selected, 1)
 	assert.Equal(t, uint64(100000), selected[0].Amount)
@@ -38,9 +38,9 @@ func TestSelectUTXOs_MultipleUTXOs(t *testing.T) {
 		},
 	}
 
-	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 1)
+	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 100)
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(selected), 2)
+	assert.Len(t, selected, 1)
 }
 
 func TestSelectUTXOs_InsufficientBalance(t *testing.T) {
@@ -53,7 +53,7 @@ func TestSelectUTXOs_InsufficientBalance(t *testing.T) {
 		},
 	}
 
-	_, err := SelectUTXOs(context.Background(), mock, "1Address", 10000, 1)
+	_, err := SelectUTXOs(context.Background(), mock, "1Address", 10000, 100)
 	assert.ErrorIs(t, err, ErrInsufficientBalance)
 }
 
@@ -64,23 +64,24 @@ func TestSelectUTXOs_NoUTXOs(t *testing.T) {
 		},
 	}
 
-	_, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 1)
+	_, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 100)
 	assert.ErrorIs(t, err, ErrInsufficientBalance)
 }
 
 func TestEstimateFee(t *testing.T) {
-	fee := EstimateFee(1, 2, 1)
-	// 1 input * 148 + 2 outputs * 34 + 10 overhead = 226
-	assert.Equal(t, uint64(1*(148+2*34+10)), fee)
+	fee := EstimateFee(1, 2, 100)
+	// 1 input * 148 + 2 outputs * 34 + 10 overhead = 226 bytes
+	// 100 sat/KB => ceil(226*100/1000) = 23 sat.
+	assert.Equal(t, uint64(23), fee)
 }
 
 func TestEstimateHTLCFee_LargerThanP2PKH(t *testing.T) {
-	htlcFee := EstimateHTLCFee(1, 1)
-	p2pkhFee := EstimateFee(1, 2, 1)
+	htlcFee := EstimateHTLCFee(1, 100)
+	p2pkhFee := EstimateFee(1, 2, 100)
 	assert.Greater(t, htlcFee, p2pkhFee, "HTLC fee should be larger due to bigger output script")
-	// HTLC output: 8 + 1 + 200 = 209 bytes vs P2PKH output: 34 bytes
-	// Difference should be ~175 bytes.
-	assert.InDelta(t, float64(htlcFee-p2pkhFee), 175, 10)
+	// HTLC output: 8 + 1 + 200 = 209 bytes vs P2PKH output: 34 bytes.
+	// At 100 sat/KB, fee delta should be around ceil(175*100/1000) ~= 18 sat.
+	assert.InDelta(t, float64(htlcFee-p2pkhFee), 18, 2)
 }
 
 func TestSelectUTXOs_SkipsInvalidTxID(t *testing.T) {
@@ -94,7 +95,7 @@ func TestSelectUTXOs_SkipsInvalidTxID(t *testing.T) {
 		},
 	}
 
-	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 1)
+	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 100)
 	require.NoError(t, err)
 	assert.Len(t, selected, 1)
 	// Should have selected the valid one (bb...).
@@ -113,7 +114,7 @@ func TestSelectUTXOs_GreedySelectsLargestFirst(t *testing.T) {
 		},
 	}
 
-	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 1)
+	selected, err := SelectUTXOs(context.Background(), mock, "1Address", 1000, 100)
 	require.NoError(t, err)
 	// Should select only the 5000-sat UTXO (largest first, sufficient alone).
 	assert.Len(t, selected, 1)

@@ -138,7 +138,7 @@ func TestFundExternalUTXO(t *testing.T) {
 	batch.AddCreateRoot(rootKey.PublicKey, payload)
 	batch.AddFeeInput(feeUTXO)
 	batch.SetChange(feeKey.PublicKey.Hash())
-	batch.SetFeeRate(1)
+	batch.SetFeeRate(100)
 	batchResult, err := batch.Build()
 	require.NoError(t, err, "build unsigned root tx from external UTXO")
 	require.NotEmpty(t, batchResult.RawTx, "unsigned tx bytes should not be empty")

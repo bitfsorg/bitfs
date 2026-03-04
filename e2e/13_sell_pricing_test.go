@@ -179,7 +179,7 @@ func TestPriceInNodeState(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKP.PublicKey, []byte("sell-pricing test root"))
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKP.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -213,7 +213,7 @@ func TestPriceInNodeState(t *testing.T) {
 	fileBatch.AddCreateChild(fileKP.PublicKey, rootResult.TxID, []byte("sell-pricing test file payload"), rootNodeUTXO, rootKP.PrivateKey)
 	fileBatch.AddFeeInput(changeUTXO)
 	fileBatch.SetChange(feeKP.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file child tx")
 

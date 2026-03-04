@@ -83,7 +83,7 @@ func TestHardLink(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -123,7 +123,7 @@ func TestHardLink(t *testing.T) {
 	dirsBatch.AddCreateChild(dirBKey.PublicKey, rootResult.TxID, dirBPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirsBatch.AddFeeInput(changeUTXO)
 	dirsBatch.SetChange(feeKey.PublicKey.Hash())
-	dirsBatch.SetFeeRate(1)
+	dirsBatch.SetFeeRate(100)
 	dirsResult, err := dirsBatch.Build()
 	require.NoError(t, err, "build dirs batch tx")
 
@@ -164,7 +164,7 @@ func TestHardLink(t *testing.T) {
 	fileBatch.AddCreateChild(fileKey.PublicKey, dirsResult.TxID, filePayload, dirANodeUTXO, dirAKey.PrivateKey)
 	fileBatch.AddFeeInput(dirsChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file tx")
 
@@ -193,7 +193,7 @@ func TestHardLink(t *testing.T) {
 		dirBUpdateBatch.AddSelfUpdate(dirBKey.PublicKey, rootResult.TxID, dirBHardLinkPayload, dirBNodeUTXO, dirBKey.PrivateKey)
 		dirBUpdateBatch.AddFeeInput(fileChangeUTXO)
 		dirBUpdateBatch.SetChange(feeKey.PublicKey.Hash())
-		dirBUpdateBatch.SetFeeRate(1)
+		dirBUpdateBatch.SetFeeRate(100)
 		dirBUpdateResult, err := dirBUpdateBatch.Build()
 		require.NoError(t, err, "build dir_b self-update tx (hard link)")
 
@@ -323,7 +323,7 @@ func TestSoftLink(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx")
 
@@ -362,7 +362,7 @@ func TestSoftLink(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, dirPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx")
 
@@ -401,7 +401,7 @@ func TestSoftLink(t *testing.T) {
 	fileBatch.AddSelfUpdate(dirKey.PublicKey, rootResult.TxID, dirPayload, dirNodeUTXO, dirKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file+dir-refresh tx")
 
@@ -438,7 +438,7 @@ func TestSoftLink(t *testing.T) {
 	linkBatch.AddCreateChild(linkKey.PublicKey, dirResult.TxID, linkPayload, dirNodeUTXORefresh, dirKey.PrivateKey)
 	linkBatch.AddFeeInput(fileChangeUTXO)
 	linkBatch.SetChange(feeKey.PublicKey.Hash())
-	linkBatch.SetFeeRate(1)
+	linkBatch.SetFeeRate(100)
 	linkResult, err := linkBatch.Build()
 	require.NoError(t, err, "build link tx")
 
