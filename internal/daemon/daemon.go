@@ -129,10 +129,8 @@ type TLSConfig struct {
 
 // PaymentConfig holds payment configuration.
 type PaymentConfig struct {
-	Enabled       bool   `toml:"enabled"`
-	PricePerMB    uint64 `toml:"price_per_mb"`
-	FreeQuotaMB   uint64 `toml:"free_quota_mb"`
-	InvoiceExpiry int64  `toml:"invoice_expiry"`
+	Enabled       bool  `toml:"enabled"`
+	InvoiceExpiry int64 `toml:"invoice_expiry"`
 }
 
 // SecurityConfig holds security configuration.
@@ -193,8 +191,6 @@ func DefaultConfig() *Config {
 		},
 		Payment: PaymentConfig{
 			Enabled:       false,
-			PricePerMB:    100,
-			FreeQuotaMB:   10,
 			InvoiceExpiry: 3600,
 		},
 		Security: SecurityConfig{

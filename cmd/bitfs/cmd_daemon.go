@@ -93,6 +93,8 @@ func runDaemonStart(args []string) int {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitError
 	}
+	// Enable invoice persistence by default for crash recovery and payment-state continuity.
+	d.SetInvoiceDir(filepath.Join(*dataDir, "invoices"))
 
 	// Auto-reload wallet state updates (e.g. paymail bind/unbind while daemon is running).
 	statePath := filepath.Join(*dataDir, "state.json")
