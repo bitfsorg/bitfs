@@ -414,7 +414,7 @@ func TestContentNegotiation_WithMetanet_Markdown(t *testing.T) {
 
 func TestContentNegotiation_PaidContent(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	meta.nodes["/premium/video.mp4"] = &NodeInfo{
 		Type:       "file",
 		MimeType:   "video/mp4",
@@ -1239,9 +1239,9 @@ func TestPathRouting(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestPaidContent_X402Disabled(t *testing.T) {
+func TestPaidContent_PaymentDisabled(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = false
+	d.config.Payment.Enabled = false
 	meta.nodes["/premium"] = &NodeInfo{
 		Type:   "file",
 		Access: "paid",
@@ -1429,7 +1429,7 @@ func TestContentNegotiation_WithMetanet_DirMarkdown(t *testing.T) {
 
 func TestPaidContent_PriceHeaders(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	meta.nodes["/premium/data"] = &NodeInfo{
 		Type:       "file",
 		FileSize:   2048,
@@ -1602,7 +1602,7 @@ func TestServeJSON_ExposesKeyHashForFree(t *testing.T) {
 
 func TestCapsuleOverwrite_SecondBuyerCannotOverwrite(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	fileTxID := make([]byte, 32)
 	for i := range fileTxID {
 		fileTxID[i] = byte(i + 0xB0)

@@ -32,7 +32,7 @@ Three layers:
 - **`cmd/bitfs/`** — Owner CLI (wallet, vault, put, mkdir, rm, mv, cp, link, sell, encrypt, publish, shell, daemon)
 - **`cmd/b*/`** — Read-only visitor tools (bls, bcat, bget, bstat, btree, bmget), connect to daemon over HTTP
 - **`internal/`** — Business logic
-  - `daemon/` — LFCP HTTP server (content serving, Metanet metadata, Method 42, x402 payments)
+  - `daemon/` — LFCP HTTP server (content serving, Metanet metadata, Method 42, bandwidth payments)
   - `client/` — HTTP client for b-tools
   - `buy/` — Purchase flow for paid content
   - `publish/` — Content publishing pipeline

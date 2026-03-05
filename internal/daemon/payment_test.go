@@ -57,7 +57,7 @@ func testP2PKHScript(t *testing.T, addr string) []byte {
 
 func TestServePaidContent_Returns402WithInvoice(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	keyHash := make([]byte, 32)
 	for i := range keyHash {
@@ -119,8 +119,8 @@ func TestServePaidContent_Returns402WithInvoice(t *testing.T) {
 
 func TestServePaidContent_InvoiceExpiry(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
-	d.config.X402.InvoiceExpiry = 7200 // 2 hours
+	d.config.Payment.Enabled = true
+	d.config.Payment.InvoiceExpiry = 7200 // 2 hours
 
 	meta.nodes["/premium/expiry.dat"] = &NodeInfo{
 		Type:       "file",
@@ -152,7 +152,7 @@ func TestServePaidContent_InvoiceExpiry(t *testing.T) {
 
 func TestServePaidContent_TotalPriceCalculation(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	meta.nodes["/premium/priced.dat"] = &NodeInfo{
 		Type:       "file",
@@ -179,9 +179,9 @@ func TestServePaidContent_TotalPriceCalculation(t *testing.T) {
 	assert.Equal(t, float64(200), resp["total_price"])
 }
 
-func TestServePaidContent_X402HeadersComplete(t *testing.T) {
+func TestServePaidContent_PaymentHeadersComplete(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	meta.nodes["/premium/headers.dat"] = &NodeInfo{
 		Type:       "file",
@@ -579,7 +579,7 @@ func TestHandleSubmitHTLC_WrongAddress(t *testing.T) {
 func TestFullPurchaseFlow(t *testing.T) {
 	d, _, store, meta := newTestDaemon(t)
 	d.SetChain(&mockChainService{})
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	keyHash := make([]byte, 32)
 	for i := range keyHash {
@@ -904,7 +904,7 @@ func TestEvictExpiredInvoices_MixedScenario(t *testing.T) {
 
 func TestServePaidContent_InvoiceCapRejects503(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	meta.nodes["/premium/capped.dat"] = &NodeInfo{
 		Type:       "file",
@@ -938,7 +938,7 @@ func TestServePaidContent_InvoiceCapRejects503(t *testing.T) {
 
 func TestServePaidContent_InvoiceCapEvictsAndSucceeds(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 
 	meta.nodes["/premium/evict-ok.dat"] = &NodeInfo{
 		Type:       "file",

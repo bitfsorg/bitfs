@@ -84,7 +84,7 @@ func setupBuyServer(t *testing.T) (*httptest.Server, *wallet.Wallet, *method42.E
 
 	config := daemon.DefaultConfig()
 	config.Security.RateLimit.RPM = 0 // disable rate limiting for tests
-	config.X402.Enabled = true        // enable payment so paid paths return 402
+	config.Payment.Enabled = true     // enable payment so paid paths return 402
 
 	d, err := daemon.New(config, walletSvc, fileStore, metanetSvc)
 	require.NoError(t, err, "create daemon")
@@ -307,10 +307,10 @@ func TestSubmitInvalidHTLC(t *testing.T) {
 	})
 }
 
-// TestBuyFlowX402Headers verifies that the 402 Payment Required response
+// TestBuyFlowPaymentHeaders verifies that the 402 Payment Required response
 // from accessing a paid path includes all required payment HTTP headers and
 // that the JSON body contains the expected invoice fields.
-func TestBuyFlowX402Headers(t *testing.T) {
+func TestBuyFlowPaymentHeaders(t *testing.T) {
 	server, _, _ := setupBuyServer(t)
 
 	req, err := http.NewRequest("GET", server.URL+"/docs/secret.txt", nil)

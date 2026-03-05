@@ -20,7 +20,7 @@ import (
 
 // setupContentNegDaemon creates a daemon with mock MetanetService for content
 // negotiation tests. Returns the httptest.Server and cleanup function.
-func setupContentNegDaemon(t *testing.T, nodes map[string]*daemon.NodeInfo, x402Enabled bool) *httptest.Server {
+func setupContentNegDaemon(t *testing.T, nodes map[string]*daemon.NodeInfo, paymentEnabled bool) *httptest.Server {
 	t.Helper()
 
 	mnemonic, err := wallet.GenerateMnemonic(wallet.Mnemonic12Words)
@@ -41,7 +41,7 @@ func setupContentNegDaemon(t *testing.T, nodes map[string]*daemon.NodeInfo, x402
 
 	config := daemon.DefaultConfig()
 	config.Security.RateLimit.RPM = 0 // disable rate limiting for tests
-	config.X402.Enabled = x402Enabled
+	config.Payment.Enabled = paymentEnabled
 
 	d, err := daemon.New(config, walletSvc, fileStore, metanetSvc)
 	require.NoError(t, err)
@@ -310,10 +310,10 @@ func TestContentNegPaidFile402(t *testing.T) {
 	})
 
 	// Sub-test: payment disabled should NOT return 402 (falls through to content negotiation).
-	t.Run("x402_disabled_serves_normally", func(t *testing.T) {
-		serverNoX402 := setupContentNegDaemon(t, nodes, false)
+	t.Run("payment_disabled_serves_normally", func(t *testing.T) {
+		serverNoPayment := setupContentNegDaemon(t, nodes, false)
 
-		req, err := http.NewRequest("GET", serverNoX402.URL+"/secret.pdf", nil)
+		req, err := http.NewRequest("GET", serverNoPayment.URL+"/secret.pdf", nil)
 		require.NoError(t, err)
 		req.Header.Set("Accept", "application/json")
 

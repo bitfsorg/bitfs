@@ -221,7 +221,7 @@ func (d *Daemon) serveWithContentNegotiation(w http.ResponseWriter, r *http.Requ
 		node, err := d.getNodeByPath(r.Context(), path)
 		if err == nil {
 			// Check access control
-			if node.Access == "paid" && d.config.X402.Enabled {
+			if node.Access == "paid" && d.config.Payment.Enabled {
 				d.servePaidContent(w, node)
 				return
 			}

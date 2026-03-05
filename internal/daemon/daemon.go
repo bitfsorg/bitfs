@@ -113,7 +113,7 @@ type ChildInfo struct {
 type Config struct {
 	ListenAddr string         `toml:"listen"`
 	TLS        TLSConfig      `toml:"tls"`
-	X402       X402Config     `toml:"x402"`
+	Payment    PaymentConfig  `toml:"payment"`
 	Security   SecurityConfig `toml:"security"`
 	Storage    StorageConfig  `toml:"storage"`
 	Log        LogConfig      `toml:"log"`
@@ -127,8 +127,8 @@ type TLSConfig struct {
 	KeyFile  string `toml:"key"`
 }
 
-// X402Config holds payment configuration.
-type X402Config struct {
+// PaymentConfig holds payment configuration.
+type PaymentConfig struct {
 	Enabled       bool   `toml:"enabled"`
 	PricePerMB    uint64 `toml:"price_per_mb"`
 	FreeQuotaMB   uint64 `toml:"free_quota_mb"`
@@ -191,7 +191,7 @@ func DefaultConfig() *Config {
 		TLS: TLSConfig{
 			Enabled: false,
 		},
-		X402: X402Config{
+		Payment: PaymentConfig{
 			Enabled:       false,
 			PricePerMB:    100,
 			FreeQuotaMB:   10,

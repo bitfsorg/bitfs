@@ -123,9 +123,9 @@ func createTestDaemon(t *testing.T) (*daemon.Daemon, *mockContentStore) {
 	return d, contentStore
 }
 
-// --- TestX402InvoiceHeaderRoundTrip ---
+// --- TestPaymentInvoiceHeaderRoundTrip ---
 
-func TestX402InvoiceHeaderRoundTrip(t *testing.T) {
+func TestPaymentInvoiceHeaderRoundTrip(t *testing.T) {
 	// 1. Create invoice with price, file size, capsule hash
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
 	invoice, invErr := payment.NewInvoice(100, 10240, "1BitFSAddress...", capsuleHash, 3600)
