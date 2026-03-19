@@ -5,6 +5,10 @@
 - **Source install only** — no pre-compiled binaries; requires Go >= 1.25
 - **CLI only** — no browser extension or mobile app in this release
 
+## Network
+
+- **Mainnet requires own RPC node** — CLI connects to BSV via JSON-RPC only; no built-in WoC/ARC REST API support. Mainnet users must provide `--rpc-url` pointing to their own BSV node or a hosted RPC service. Regtest and testnet presets connect to localhost by default.
+
 ## Design Limitations
 
 - **Write permission is application-layer enforced** — not cryptographically enforced via covenant; planned for v0.0.2+
