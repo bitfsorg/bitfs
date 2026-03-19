@@ -468,7 +468,7 @@ btree bitfs://example.com/
 
 ## 9. Running the Daemon
 
-The BitFS daemon serves content over HTTP, implements the x402 payment
+The BitFS daemon serves content over HTTP, implements the bandwidth-payment
 protocol for paid content, and provides the API that b-tools connect to.
 
 ### Start the daemon

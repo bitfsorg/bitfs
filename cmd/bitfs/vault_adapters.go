@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 
@@ -17,7 +19,8 @@ import (
 
 // vaultWalletAdapter implements daemon.WalletService using a vault.
 type vaultWalletAdapter struct {
-	v *vault.Vault
+	v  *vault.Vault
+	mu sync.RWMutex
 }
 
 func newVaultWalletAdapter(v *vault.Vault) *vaultWalletAdapter {
@@ -42,6 +45,9 @@ func (a *vaultWalletAdapter) DeriveNodeKeyPair(pnode []byte) (*ec.PrivateKey, *e
 }
 
 func (a *vaultWalletAdapter) GetSellerKeyPair() (*ec.PrivateKey, *ec.PublicKey, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	vaultIdx, err := a.v.ResolveVaultIndex("")
 	if err != nil {
 		return nil, nil, err
@@ -54,15 +60,45 @@ func (a *vaultWalletAdapter) GetSellerKeyPair() (*ec.PrivateKey, *ec.PublicKey, 
 }
 
 func (a *vaultWalletAdapter) GetVaultPubKey(alias string) (string, error) {
-	vaultIdx, err := a.v.ResolveVaultIndex(alias)
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	// Resolve alias → vault name via PaymailBindings.
+	vaultName, err := a.v.Wallet.ResolvePaymailAlias(a.v.WState, alias)
 	if err != nil {
 		return "", err
 	}
-	kp, err := a.v.Wallet.DeriveVaultRootKey(vaultIdx)
+
+	// Look up vault → account_index.
+	vault, err := a.v.Wallet.GetVault(a.v.WState, vaultName)
 	if err != nil {
 		return "", err
 	}
+
+	// Derive public key.
+	kp, err := a.v.Wallet.DeriveVaultRootKey(vault.AccountIndex)
+	if err != nil {
+		return "", err
+	}
+
 	return hex.EncodeToString(kp.PublicKey.Compressed()), nil
+}
+
+// ReloadState reloads wallet state from disk.
+func (a *vaultWalletAdapter) ReloadState() error {
+	statePath := filepath.Join(a.v.DataDir, "state.json")
+	state, err := loadWalletState(statePath)
+	if err != nil {
+		return err
+	}
+	if err := state.Validate(); err != nil {
+		return fmt.Errorf("invalid wallet state: %w", err)
+	}
+
+	a.mu.Lock()
+	a.v.WState = state
+	a.mu.Unlock()
+	return nil
 }
 
 // vaultStoreAdapter implements daemon.ContentStore using a vault.

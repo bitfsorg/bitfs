@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -24,9 +26,11 @@ import (
 
 // mockWallet implements WalletService for testing.
 type mockWallet struct {
-	privKey *ec.PrivateKey
-	pubKey  *ec.PublicKey
-	err     error
+	privKey   *ec.PrivateKey
+	pubKey    *ec.PublicKey
+	err       error
+	reloadErr error
+	reloadN   int
 
 	// vaultKeys maps alias names to compressed hex public keys for GetVaultPubKey.
 	vaultKeys map[string]string
@@ -74,6 +78,11 @@ func (m *mockWallet) GetVaultPubKey(alias string) (string, error) {
 		return "", fmt.Errorf("vault not found: %s", alias)
 	}
 	return key, nil
+}
+
+func (m *mockWallet) ReloadState() error {
+	m.reloadN++
+	return m.reloadErr
 }
 
 // mockStore implements ContentStore for testing.
@@ -407,7 +416,7 @@ func TestContentNegotiation_WithMetanet_Markdown(t *testing.T) {
 
 func TestContentNegotiation_PaidContent(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	meta.nodes["/premium/video.mp4"] = &NodeInfo{
 		Type:       "file",
 		MimeType:   "video/mp4",
@@ -1232,9 +1241,9 @@ func TestPathRouting(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestPaidContent_X402Disabled(t *testing.T) {
+func TestPaidContent_PaymentDisabled(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = false
+	d.config.Payment.Enabled = false
 	meta.nodes["/premium"] = &NodeInfo{
 		Type:   "file",
 		Access: "paid",
@@ -1422,7 +1431,7 @@ func TestContentNegotiation_WithMetanet_DirMarkdown(t *testing.T) {
 
 func TestPaidContent_PriceHeaders(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	meta.nodes["/premium/data"] = &NodeInfo{
 		Type:       "file",
 		FileSize:   2048,
@@ -1595,7 +1604,7 @@ func TestServeJSON_ExposesKeyHashForFree(t *testing.T) {
 
 func TestCapsuleOverwrite_SecondBuyerCannotOverwrite(t *testing.T) {
 	d, _, _, meta := newTestDaemon(t)
-	d.config.X402.Enabled = true
+	d.config.Payment.Enabled = true
 	fileTxID := make([]byte, 32)
 	for i := range fileTxID {
 		fileTxID[i] = byte(i + 0xB0)
@@ -1850,6 +1859,57 @@ func TestDaemon_PersistInvoice_DisabledWhenNoDirSet(t *testing.T) {
 	// invoiceDir is empty — persistence should be a no-op.
 	inv := &InvoiceRecord{ID: "test-123", Paid: true}
 	assert.NoError(t, d.persistInvoice(inv))
+}
+
+func TestDaemon_RecoversUnpaidInvoicesOnStart(t *testing.T) {
+	d, _, _, _ := newTestDaemon(t)
+	dir := t.TempDir()
+	d.invoiceDir = dir
+
+	inv := &InvoiceRecord{
+		ID:     "unpaid-recover-test",
+		Paid:   false,
+		Expiry: time.Now().Add(10 * time.Minute),
+	}
+	require.NoError(t, d.persistInvoice(inv))
+
+	d.invoicesMu.Lock()
+	d.invoices = make(map[string]*InvoiceRecord)
+	d.invoicesMu.Unlock()
+
+	d.recoverPersistedInvoices()
+
+	d.invoicesMu.RLock()
+	defer d.invoicesMu.RUnlock()
+	loaded, ok := d.invoices["unpaid-recover-test"]
+	require.True(t, ok, "unpaid unexpired invoice should be recovered")
+	assert.False(t, loaded.Paid)
+}
+
+func TestDaemon_EvictionRemovesDiskFile(t *testing.T) {
+	d, _, _, _ := newTestDaemon(t)
+	dir := t.TempDir()
+	d.invoiceDir = dir
+
+	inv := &InvoiceRecord{
+		ID:     "evict-disk-test",
+		Paid:   false,
+		Expiry: time.Now().Add(-1 * time.Minute),
+	}
+	require.NoError(t, d.persistInvoice(inv))
+
+	d.invoicesMu.Lock()
+	d.invoices[inv.ID] = inv
+	d.invoicesMu.Unlock()
+
+	path := filepath.Join(dir, inv.ID+".json")
+	_, err := os.Stat(path)
+	require.NoError(t, err)
+
+	d.evictExpiredInvoices()
+
+	_, err = os.Stat(path)
+	assert.True(t, os.IsNotExist(err), "disk file should be removed after eviction")
 }
 
 // --- handleVersions Tests ---

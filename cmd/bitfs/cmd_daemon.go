@@ -87,11 +87,19 @@ func runDaemonStart(args []string) int {
 	cfg.ListenAddr = *listen
 	cfg.Mainnet = eng.Wallet.Network().Name == "mainnet"
 
-	d, err := daemon.New(cfg, newVaultWalletAdapter(eng), newVaultStoreAdapter(eng), newVaultMetanetAdapter(eng))
+	walletAdapter := newVaultWalletAdapter(eng)
+	d, err := daemon.New(cfg, walletAdapter, newVaultStoreAdapter(eng), newVaultMetanetAdapter(eng))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitError
 	}
+	// Enable invoice persistence by default for crash recovery and payment-state continuity.
+	d.SetInvoiceDir(filepath.Join(*dataDir, "invoices"))
+
+	// Auto-reload wallet state updates (e.g. paymail bind/unbind while daemon is running).
+	statePath := filepath.Join(*dataDir, "state.json")
+	reloader := startWalletStateAutoReloader(statePath, walletAdapter)
+	defer reloader.Close()
 
 	// Attach SPV service if available.
 	if spvAdapter := newVaultSPVAdapter(eng); spvAdapter != nil {

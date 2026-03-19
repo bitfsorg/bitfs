@@ -16,7 +16,7 @@ import (
 // runVault dispatches vault subcommands.
 func runVault(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete> [options]\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete|export> [options]\n")
 		return exitUsageError
 	}
 
@@ -32,13 +32,16 @@ func runVault(args []string) int {
 		return runVaultRename(subArgs)
 	case "delete":
 		return runVaultDelete(subArgs)
+	case "export":
+		return runVaultExport(subArgs)
 	case "--help", "-h":
-		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault <create|list|rename|delete|export> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Subcommands:\n")
 		fmt.Fprintf(os.Stderr, "  create <name>       Create a new vault\n")
 		fmt.Fprintf(os.Stderr, "  list                List all vaults\n")
 		fmt.Fprintf(os.Stderr, "  rename <old> <new>  Rename a vault\n")
 		fmt.Fprintf(os.Stderr, "  delete <name>       Delete a vault\n")
+		fmt.Fprintf(os.Stderr, "  export <name>       Export vault root private key\n")
 		return exitSuccess
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown vault subcommand %q\n", sub)

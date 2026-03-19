@@ -48,7 +48,7 @@ func TestDoubleSpendRejected(t *testing.T) {
 	batch1.AddCreateRoot(rootKey1.PublicKey, []byte("first root tx"))
 	batch1.AddFeeInput(feeUTXO)
 	batch1.SetChange(feeKey.PublicKey.Hash())
-	batch1.SetFeeRate(1)
+	batch1.SetFeeRate(100)
 	result1, err := batch1.Build()
 	require.NoError(t, err, "build first root tx")
 
@@ -69,7 +69,7 @@ func TestDoubleSpendRejected(t *testing.T) {
 	batch2.AddCreateRoot(rootKey2.PublicKey, []byte("second root tx - double spend"))
 	batch2.AddFeeInput(feeUTXO)
 	batch2.SetChange(feeKey.PublicKey.Hash())
-	batch2.SetFeeRate(1)
+	batch2.SetFeeRate(100)
 	result2, err := batch2.Build()
 	require.NoError(t, err, "build second root tx")
 
@@ -148,7 +148,7 @@ func TestInsufficientFeeUTXO(t *testing.T) {
 	batch.AddCreateRoot(rootKey.PublicKey, []byte("insufficient funds test"))
 	batch.AddFeeInput(dustOnlyUTXO)
 	batch.SetChange(feeKey.PublicKey.Hash())
-	batch.SetFeeRate(1)
+	batch.SetFeeRate(100)
 	_, err = batch.Build()
 	require.Error(t, err, "tx build with dust-only UTXO should fail with insufficient funds")
 	t.Logf("insufficient fee correctly rejected: %v", err)

@@ -15,12 +15,13 @@ const testKeyHex = "000000000000000000000000000000000000000000000000000000000000
 func TestLoadConfig_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	confPath := filepath.Join(dir, "buyer.conf")
-	require.NoError(t, os.WriteFile(confPath, []byte("wallet_key = "+testKeyHex+"\nnetwork = regtest\n"), 0600))
+	require.NoError(t, os.WriteFile(confPath, []byte("wallet_key = "+testKeyHex+"\nnetwork = regtest\nfee_rate_sat_per_kb = 250\n"), 0600))
 
 	cfg, err := LoadConfig(LoadConfigOpts{DataDir: dir})
 	require.NoError(t, err)
 	assert.NotNil(t, cfg.PrivKey)
 	assert.Equal(t, "regtest", cfg.Network)
+	assert.Equal(t, uint64(250), cfg.FeeRateSatPerKB)
 }
 
 func TestLoadConfig_CLIFlagOverridesFile(t *testing.T) {
@@ -124,4 +125,32 @@ func TestLoadConfig_EnvVarFromFile(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, cfg.PrivKey)
+}
+
+func TestLoadConfig_FeeRateFromEnv(t *testing.T) {
+	cfg, err := LoadConfig(LoadConfigOpts{
+		WalletKeyFlag: testKeyHex,
+		Env:           map[string]string{"BITFS_BUY_FEE_RATE_SAT_PER_KB": "333"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(333), cfg.FeeRateSatPerKB)
+}
+
+func TestLoadConfig_FeeRateFlagOverridesEnv(t *testing.T) {
+	cfg, err := LoadConfig(LoadConfigOpts{
+		WalletKeyFlag: testKeyHex,
+		FeeRateFlag:   "444",
+		Env:           map[string]string{"BITFS_BUY_FEE_RATE_SAT_PER_KB": "333"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(444), cfg.FeeRateSatPerKB)
+}
+
+func TestLoadConfig_InvalidFeeRateIgnored(t *testing.T) {
+	cfg, err := LoadConfig(LoadConfigOpts{
+		WalletKeyFlag: testKeyHex,
+		Env:           map[string]string{"BITFS_BUY_FEE_RATE_SAT_PER_KB": "invalid"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(0), cfg.FeeRateSatPerKB)
 }

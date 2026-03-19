@@ -1,8 +1,9 @@
 # BitFS Daemon API Reference
 
 The BitFS daemon (LFCP -- Local Full-Copy Peer) exposes an HTTP API for content
-retrieval, Metanet metadata queries, Method 42 ECDH identity handshake, x402
-payment handling, Paymail/BSV Alias PKI resolution, and content negotiation.
+retrieval, Metanet metadata queries, Method 42 ECDH identity handshake,
+bandwidth-payment handling, Paymail/BSV Alias PKI resolution, and content
+negotiation.
 
 Default listen address: `:8080`. TLS is optional. All endpoints apply per-IP
 token-bucket rate limiting (default 60 RPM, burst 20) and CORS headers.
@@ -295,7 +296,7 @@ curl http://localhost:8080/_bitfs/meta/02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b
 
 ## Payment
 
-Payment follows the x402 protocol. When a client accesses paid content via
+Payment follows the bandwidth-payment protocol. When a client accesses paid content via
 content negotiation (`GET /{path}`), the daemon responds with HTTP 402 and an
 invoice. The client then uses the buy endpoints to inspect and fulfill that
 invoice by submitting an HTLC transaction.
@@ -508,7 +509,7 @@ Serve content at the given filesystem path with content negotiation based on the
 `Accept` header. This is the primary endpoint for browsing the BitFS filesystem
 over HTTP.
 
-If the resolved node has `access: "paid"` and x402 is enabled, the daemon returns
+If the resolved node has `access: "paid"` and bandwidth payment is enabled, the daemon returns
 an HTTP 402 response with an invoice (see [Payment](#payment)).
 
 **URL Parameters:**
@@ -580,9 +581,9 @@ The response format is determined by the `Accept` header:
 - images (dir)
 ```
 
-**Response Body (402) -- Paid content (x402 enabled):**
+**Response Body (402) -- Paid content (bandwidth payment enabled):**
 
-The response includes x402 HTTP headers and a JSON invoice body:
+The response includes payment HTTP headers and a JSON invoice body:
 
 ```json
 {
@@ -601,7 +602,7 @@ The response includes x402 HTTP headers and a JSON invoice body:
 |------|---------|
 | 200  | Content served successfully |
 | 400  | Path traversal attempt (`INVALID_PATH`) |
-| 402  | Payment required (paid content with x402 enabled) |
+| 402  | Payment required (paid content with bandwidth payment enabled) |
 | 404  | Path not found (`NOT_FOUND`) |
 | 429  | Rate limited |
 

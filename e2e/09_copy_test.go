@@ -78,7 +78,7 @@ func TestCopyFile(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx batch")
 
@@ -113,7 +113,7 @@ func TestCopyFile(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, dirPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx batch")
 
@@ -175,7 +175,7 @@ func TestCopyFile(t *testing.T) {
 	filesBatch.AddCreateChild(copyKey.PublicKey, dirResult.TxID, copyPayload, dirNodeUTXO, dirKey.PrivateKey)
 	filesBatch.AddFeeInput(dirChangeUTXO)
 	filesBatch.SetChange(feeKey.PublicKey.Hash())
-	filesBatch.SetFeeRate(1)
+	filesBatch.SetFeeRate(100)
 	filesResult, err := filesBatch.Build()
 	require.NoError(t, err, "build original + copy batch")
 
@@ -343,7 +343,7 @@ func TestCopyIndependence(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx batch")
 
@@ -376,7 +376,7 @@ func TestCopyIndependence(t *testing.T) {
 	dirBatch.AddCreateChild(dirKey.PublicKey, rootResult.TxID, dirPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir tx batch")
 
@@ -426,7 +426,7 @@ func TestCopyIndependence(t *testing.T) {
 	filesBatch.AddCreateChild(copyKey.PublicKey, dirResult.TxID, copyPayload, dirNodeUTXO, dirKey.PrivateKey)
 	filesBatch.AddFeeInput(dirChangeUTXO)
 	filesBatch.SetChange(feeKey.PublicKey.Hash())
-	filesBatch.SetFeeRate(1)
+	filesBatch.SetFeeRate(100)
 	filesResult, err := filesBatch.Build()
 	require.NoError(t, err, "build original + copy batch")
 
@@ -472,7 +472,7 @@ func TestCopyIndependence(t *testing.T) {
 	updateBatch.AddSelfUpdate(fileKey.PublicKey, dirResult.TxID, updatedPayload, fileNodeUTXO, fileKey.PrivateKey)
 	updateBatch.AddFeeInput(filesChangeUTXO)
 	updateBatch.SetChange(feeKey.PublicKey.Hash())
-	updateBatch.SetFeeRate(1)
+	updateBatch.SetFeeRate(100)
 	updateResult, err := updateBatch.Build()
 	require.NoError(t, err, "build self-update batch")
 

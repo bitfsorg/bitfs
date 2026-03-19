@@ -113,7 +113,7 @@ type ChildInfo struct {
 type Config struct {
 	ListenAddr string         `toml:"listen"`
 	TLS        TLSConfig      `toml:"tls"`
-	X402       X402Config     `toml:"x402"`
+	Payment    PaymentConfig  `toml:"payment"`
 	Security   SecurityConfig `toml:"security"`
 	Storage    StorageConfig  `toml:"storage"`
 	Log        LogConfig      `toml:"log"`
@@ -127,12 +127,10 @@ type TLSConfig struct {
 	KeyFile  string `toml:"key"`
 }
 
-// X402Config holds payment configuration.
-type X402Config struct {
-	Enabled       bool   `toml:"enabled"`
-	PricePerMB    uint64 `toml:"price_per_mb"`
-	FreeQuotaMB   uint64 `toml:"free_quota_mb"`
-	InvoiceExpiry int64  `toml:"invoice_expiry"`
+// PaymentConfig holds payment configuration.
+type PaymentConfig struct {
+	Enabled       bool  `toml:"enabled"`
+	InvoiceExpiry int64 `toml:"invoice_expiry"`
 }
 
 // SecurityConfig holds security configuration.
@@ -191,10 +189,8 @@ func DefaultConfig() *Config {
 		TLS: TLSConfig{
 			Enabled: false,
 		},
-		X402: X402Config{
+		Payment: PaymentConfig{
 			Enabled:       false,
-			PricePerMB:    100,
-			FreeQuotaMB:   10,
 			InvoiceExpiry: 3600,
 		},
 		Security: SecurityConfig{
@@ -549,7 +545,9 @@ func (d *Daemon) loadInvoice(invoiceID string) (*InvoiceRecord, error) {
 	return &inv, nil
 }
 
-// recoverPersistedInvoices loads paid invoices from disk on startup.
+// recoverPersistedInvoices loads unexpired invoices from disk on startup.
+// Both paid invoices (regardless of expiry) and unpaid invoices that have not
+// yet expired are recovered so that in-flight purchases survive a restart.
 func (d *Daemon) recoverPersistedInvoices() {
 	if d.invoiceDir == "" {
 		return
@@ -572,7 +570,11 @@ func (d *Daemon) recoverPersistedInvoices() {
 		if unmarshalErr := json.Unmarshal(data, &inv); unmarshalErr != nil {
 			continue
 		}
-		if inv.Paid && inv.ID != "" {
+		if inv.ID == "" {
+			continue
+		}
+		// Recover both paid and unpaid invoices that haven't expired.
+		if inv.Paid || time.Now().Before(inv.Expiry) {
 			d.invoices[inv.ID] = &inv
 		}
 	}

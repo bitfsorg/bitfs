@@ -85,7 +85,7 @@ func TestMoveRename(t *testing.T) {
 	rootBatch.AddCreateRoot(rootKey.PublicKey, rootPayload)
 	rootBatch.AddFeeInput(feeUTXO)
 	rootBatch.SetChange(feeKey.PublicKey.Hash())
-	rootBatch.SetFeeRate(1)
+	rootBatch.SetFeeRate(100)
 	rootResult, err := rootBatch.Build()
 	require.NoError(t, err, "build root tx batch")
 
@@ -125,7 +125,7 @@ func TestMoveRename(t *testing.T) {
 	dirBatch.AddCreateChild(dirBKey.PublicKey, rootResult.TxID, dirBPayload, rootNodeUTXO, rootKey.PrivateKey)
 	dirBatch.AddFeeInput(changeUTXO)
 	dirBatch.SetChange(feeKey.PublicKey.Hash())
-	dirBatch.SetFeeRate(1)
+	dirBatch.SetFeeRate(100)
 	dirResult, err := dirBatch.Build()
 	require.NoError(t, err, "build dir_a + dir_b batch")
 
@@ -170,7 +170,7 @@ func TestMoveRename(t *testing.T) {
 	fileBatch.AddCreateChild(fileKey.PublicKey, dirResult.TxID, filePayload, dirANodeUTXO, dirAKey.PrivateKey)
 	fileBatch.AddFeeInput(dirChangeUTXO)
 	fileBatch.SetChange(feeKey.PublicKey.Hash())
-	fileBatch.SetFeeRate(1)
+	fileBatch.SetFeeRate(100)
 	fileResult, err := fileBatch.Build()
 	require.NoError(t, err, "build file tx batch")
 
@@ -203,7 +203,7 @@ func TestMoveRename(t *testing.T) {
 		moveBatch.AddSelfUpdate(dirBKey.PublicKey, rootResult.TxID, dirBWithFilePayload, dirBNodeUTXO, dirBKey.PrivateKey)
 		moveBatch.AddFeeInput(fileChangeUTXO)
 		moveBatch.SetChange(feeKey.PublicKey.Hash())
-		moveBatch.SetFeeRate(1)
+		moveBatch.SetFeeRate(100)
 		moveResult, err := moveBatch.Build()
 		require.NoError(t, err, "build dir_b self-update tx (add file)")
 
@@ -261,7 +261,7 @@ func TestMoveRename(t *testing.T) {
 		renameBatch.AddSelfUpdate(dirBKey.PublicKey, rootResult.TxID, renamedPayload, dirBNodeUTXO, dirBKey.PrivateKey)
 		renameBatch.AddFeeInput(fileChangeUTXO)
 		renameBatch.SetChange(feeKey.PublicKey.Hash())
-		renameBatch.SetFeeRate(1)
+		renameBatch.SetFeeRate(100)
 		renameResult, err := renameBatch.Build()
 		require.NoError(t, err, "build dir_b rename batch")
 

@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -103,8 +105,8 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 
 	// Determine invoice TTL in seconds.
 	ttlSeconds := int64(DefaultInvoiceExpiry / time.Second)
-	if d.config.X402.InvoiceExpiry > 0 {
-		ttlSeconds = d.config.X402.InvoiceExpiry
+	if d.config.Payment.InvoiceExpiry > 0 {
+		ttlSeconds = d.config.Payment.InvoiceExpiry
 	}
 
 	// Create invoice without capsule hash (deferred until buyer identifies themselves).
@@ -152,6 +154,11 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 	d.invoicesMu.Lock()
 	d.invoices[inv.ID] = record
 	d.invoicesMu.Unlock()
+
+	// Persist new invoice to disk for crash recovery.
+	if err := d.persistInvoice(record); err != nil {
+		log.Printf("WARN: failed to persist invoice %s: %v", inv.ID, err)
+	}
 
 	// Set payment HTTP headers and return 402 status via libbitfs/payment.
 	w.Header().Set("Content-Type", "application/json")
@@ -556,13 +563,13 @@ func (d *Daemon) handlePayInvoice(w http.ResponseWriter, r *http.Request) {
 
 	// Verify P2PKH payment to seller address using snapshotted values.
 	proof := &payment.PaymentProof{RawTx: rawTx}
-	x402Inv := &payment.Invoice{
+	payInv := &payment.Invoice{
 		ID:          paySnap.ID,
 		Price:       paySnap.TotalPrice,
 		PaymentAddr: paySnap.PaymentAddr,
 		Expiry:      paySnap.Expiry.Unix(),
 	}
-	if _, err := payment.VerifyPayment(proof, x402Inv); err != nil {
+	if _, err := payment.VerifyPayment(proof, payInv); err != nil {
 		rollbackPaid()
 		log.Printf("[pay] ERROR: payment verification failed for invoice %s: %v", paySnap.ID, err)
 		writeJSONError(w, http.StatusBadRequest, "VERIFICATION_FAILED", "Payment verification failed")
@@ -726,6 +733,13 @@ func (d *Daemon) evictExpiredInvoices() int {
 			}
 		}
 		d.usedTxIDsMu.Unlock()
+	}
+
+	// Phase 3: remove evicted invoice files from disk.
+	if d.invoiceDir != "" {
+		for _, id := range evictedIDs {
+			_ = os.Remove(filepath.Join(d.invoiceDir, id+".json"))
+		}
 	}
 
 	return len(evictedIDs)

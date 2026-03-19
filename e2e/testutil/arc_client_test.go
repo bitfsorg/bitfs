@@ -31,7 +31,7 @@ func TestARCClientFailoverToSecondary(t *testing.T) {
 	}))
 	defer secondary.Close()
 
-	c := newARCClient([]string{primary.URL, secondary.URL}, "")
+	c := newARCClient("testnet", []string{primary.URL, secondary.URL}, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -67,7 +67,7 @@ func TestARCClientNoFailoverOnRequestError(t *testing.T) {
 	}))
 	defer secondary.Close()
 
-	c := newARCClient([]string{primary.URL, secondary.URL}, "")
+	c := newARCClient("testnet", []string{primary.URL, secondary.URL}, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

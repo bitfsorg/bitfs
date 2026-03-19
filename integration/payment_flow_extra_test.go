@@ -461,8 +461,8 @@ func TestDaemonNewNilConfig(t *testing.T) {
 
 // --- Price Calculation Boundary Tests ---
 
-// TestX402PriceCalculationBoundary tests edge cases in price calculation.
-func TestX402PriceCalculationBoundary(t *testing.T) {
+// TestPaymentPriceCalculationBoundary tests edge cases in price calculation.
+func TestPaymentPriceCalculationBoundary(t *testing.T) {
 	tests := []struct {
 		name       string
 		pricePerKB uint64
@@ -501,8 +501,8 @@ func TestX402PriceCalculationBoundary(t *testing.T) {
 
 // --- Payment Headers Round-Trip ---
 
-// TestX402PaymentHeadersRoundTrip verifies full header set/parse cycle.
-func TestX402PaymentHeadersRoundTrip(t *testing.T) {
+// TestPaymentPaymentHeadersRoundTrip verifies full header set/parse cycle.
+func TestPaymentPaymentHeadersRoundTrip(t *testing.T) {
 	capsuleHash := bytes.Repeat([]byte{0xab}, 32)
 	invoice, err := payment.NewInvoice(250, 8192, "1RoundTripAddr", capsuleHash, 3600)
 	require.NoError(t, err)
@@ -527,8 +527,8 @@ func TestX402PaymentHeadersRoundTrip(t *testing.T) {
 	assert.Equal(t, invoice.Expiry, parsed.Expiry)
 }
 
-// TestX402ParsePaymentHeadersMissing verifies ParsePaymentHeaders fails when headers are absent.
-func TestX402ParsePaymentHeadersMissing(t *testing.T) {
+// TestPaymentParsePaymentHeadersMissing verifies ParsePaymentHeaders fails when headers are absent.
+func TestPaymentParsePaymentHeadersMissing(t *testing.T) {
 	// Create a response with no payment headers.
 	recorder := httptest.NewRecorder()
 	recorder.WriteHeader(http.StatusOK)

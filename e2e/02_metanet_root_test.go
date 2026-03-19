@@ -128,7 +128,7 @@ func TestMetanetRootTx(t *testing.T) {
 	batch.AddCreateRoot(nodeKey.PublicKey, payload)
 	batch.AddFeeInput(feeUTXO)
 	batch.SetChange(feeKey.PublicKey.Hash())
-	batch.SetFeeRate(1)
+	batch.SetFeeRate(100)
 	batchResult, err := batch.Build()
 	require.NoError(t, err, "build root tx batch")
 	require.NotEmpty(t, batchResult.RawTx, "unsigned tx bytes should not be empty")

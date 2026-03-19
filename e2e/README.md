@@ -52,6 +52,12 @@ Tests are controlled via environment variables:
 | `BITFS_E2E_FUND_AMOUNT` | `0.00006` | Funding amount per `Fund()` call (BSV) |
 | `BITFS_E2E_CONFIRM_TIMEOUT` | per network | Confirmation wait timeout |
 
+For single-file `.env` setups, every variable above also supports network suffixes:
+`_MAINNET`, `_TESTNET`, `_REGTEST`. Example:
+`BITFS_E2E_ARC_API_KEY_MAINNET`, `BITFS_E2E_ARC_API_KEY_TESTNET`.
+When `BITFS_E2E_NETWORK` is set, the network-specific variable takes precedence
+over the unsuffixed fallback.
+
 ### Network Defaults
 
 | Network | Default Provider | Endpoint Defaults | Confirm Timeout |
@@ -73,6 +79,30 @@ BITFS_E2E_NETWORK=testnet \
   BITFS_E2E_FUND_WIF=c... \
   go test -tags e2e ./e2e/... -v -timeout 60m
 ```
+
+### Using `.env` for API keys and WIF
+
+The tests read configuration from environment variables, so you can keep local
+secrets in a non-committed `.env` file.
+
+```bash
+# 1) Create local env file
+cp .env.example .env
+
+# 2) Fill .env with real values (ARC/WoC API keys, funding WIF)
+#    You can keep all networks in one file using suffixes:
+#    BITFS_E2E_ARC_API_KEY_MAINNET=...
+#    BITFS_E2E_ARC_API_KEY_TESTNET=...
+
+# 3) Load .env for the current shell and run tests
+set -a
+source .env
+set +a
+
+go test -tags e2e ./e2e/... -v -count=1 -timeout 60m
+```
+
+`.gitignore` excludes `.env` by default so keys are not committed.
 
 ### Running on Mainnet
 
@@ -96,7 +126,7 @@ BITFS_E2E_NETWORK=mainnet \
 | `03_mkdir_upload_test.go` | Directory + encrypted file upload chain | Yes |
 | `04_spv_verify_test.go` | SPV Merkle proof verification | Yes |
 | `05_free_content_test.go` | Free content via daemon HTTP | — |
-| `06_paid_purchase_test.go` | x402 paid purchase with HTLC | Yes |
+| `06_paid_purchase_test.go` | bandwidth-paid purchase with HTLC | Yes |
 | `07_full_lifecycle_test.go` | Complete lifecycle smoke test | Yes |
 
 ### DAG Mutation Tests (08-11)
@@ -128,7 +158,7 @@ BITFS_E2E_NETWORK=mainnet \
 | File | Description | Node |
 |------|-------------|------|
 | `17_daemon_handshake_test.go` | Method 42 ECDH handshake endpoint | — |
-| `18_daemon_buy_api_test.go` | Buy API (GET info, POST HTLC, x402 headers) | — |
+| `18_daemon_buy_api_test.go` | Buy API (GET info, POST HTLC, payment headers) | — |
 | `19_daemon_content_neg_test.go` | Content negotiation edge cases | — |
 | `20_daemon_paymail_test.go` | BSV Alias capabilities + PKI lookup | — |
 | `21_daemon_spv_endpoint_test.go` | SPV proof endpoint (mock SPVService) | — |

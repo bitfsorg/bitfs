@@ -41,6 +41,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	verify := fs.Bool("verify", false, "SPV-verify the Metanet tx before downloading")
 	walletKey := fs.String("wallet-key", "", "buyer private key: hex, @filepath, or set BITFS_WALLET_KEY env")
 	utxoStr := fs.String("utxo", "", "buyer UTXO for purchase (txid:vout:amount)")
+	feeRateFlag := fs.String("fee-rate", "", "buyer HTLC fee rate override in sat/KB (optional)")
 	version := fs.Int("version", 0, "download a specific version (1=latest, 2=previous, ...)")
 	jsonOut := fs.Bool("json", false, "JSON output")
 	host := fs.String("host", "", "daemon URL override")
@@ -157,7 +158,7 @@ Examples:
 		}
 		return downloadContent(c, meta, *output, stdout, stderr)
 	case "paid":
-		return handlePaid(c, meta, *buyFlag, *walletKey, *utxoStr, *output, *jsonOut, stdout, stderr)
+		return handlePaid(c, meta, *buyFlag, *walletKey, *utxoStr, *feeRateFlag, *output, *jsonOut, stdout, stderr)
 	case "private":
 		if *jsonOut {
 			return handleErrorJSON(fmt.Errorf("private content"), stdout)
@@ -261,7 +262,7 @@ func deriveFilename(uriPath string) string {
 }
 
 // handlePaid handles paid content access (with or without --buy).
-func handlePaid(c *client.Client, meta *client.MetaResponse, buyEnabled bool, walletKey, utxoFlag, outputName string, jsonOut bool, stdout, stderr io.Writer) int {
+func handlePaid(c *client.Client, meta *client.MetaResponse, buyEnabled bool, walletKey, utxoFlag, feeRateFlag, outputName string, jsonOut bool, stdout, stderr io.Writer) int {
 	if !buyEnabled {
 		if jsonOut {
 			return outputPaymentRequiredJSON(meta, stdout, stderr)
@@ -271,7 +272,7 @@ func handlePaid(c *client.Client, meta *client.MetaResponse, buyEnabled bool, wa
 		return 5
 	}
 
-	cfg, err := buy.LoadConfig(buy.LoadConfigOpts{WalletKeyFlag: walletKey, UTXOFlag: utxoFlag})
+	cfg, err := buy.LoadConfig(buy.LoadConfigOpts{WalletKeyFlag: walletKey, UTXOFlag: utxoFlag, FeeRateFlag: feeRateFlag})
 	if err != nil {
 		if jsonOut {
 			return handleErrorJSON(err, stdout)

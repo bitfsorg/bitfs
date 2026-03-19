@@ -18,9 +18,10 @@ var ErrInsufficientBalance = errors.New("buyer: insufficient balance")
 // EstimateFee estimates the transaction fee in satoshis for a standard
 // P2PKH transaction. Each input contributes ~148 bytes (41 bytes outpoint +
 // ~107 bytes unlocking script), each output ~34 bytes, plus 10 bytes overhead.
+// feeRate is in sat/KB.
 func EstimateFee(nInputs, nOutputs int, feeRate uint64) uint64 {
 	size := uint64(nInputs*148 + nOutputs*34 + 10)
-	return size * feeRate
+	return estimateFeeByKB(size, feeRate)
 }
 
 // htlcScriptSizeEstimate is a conservative estimate of HTLC locking script size.
@@ -29,12 +30,18 @@ const htlcScriptSizeEstimate = 200
 
 // EstimateHTLCFee estimates the fee for an HTLC funding transaction.
 // Layout: nInputs x P2PKH inputs + 1 HTLC output + 1 P2PKH change output.
+// feeRate is in sat/KB.
 func EstimateHTLCFee(nInputs int, feeRate uint64) uint64 {
 	inputSize := uint64(nInputs * 148)
 	htlcOutput := uint64(8 + 1 + htlcScriptSizeEstimate) // satoshis + varint + script
 	changeOutput := uint64(34)                           // P2PKH
 	overhead := uint64(10)
-	return (inputSize + htlcOutput + changeOutput + overhead) * feeRate
+	return estimateFeeByKB(inputSize+htlcOutput+changeOutput+overhead, feeRate)
+}
+
+func estimateFeeByKB(sizeBytes, satPerKB uint64) uint64 {
+	// Ceiling division by 1000 bytes.
+	return (sizeBytes*satPerKB + 999) / 1000
 }
 
 // SelectUTXOs queries the blockchain service for UTXOs belonging to address

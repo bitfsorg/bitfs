@@ -35,7 +35,7 @@ func newARCNode(cfg *Config) *arcNode {
 		bhs = newBHSClient(cfg.BHSBaseURL, cfg.BHSAPIKey)
 	}
 	return &arcNode{
-		arc:       newARCClient(cfg.ARCBaseURLs, cfg.ARCAPIKey),
+		arc:       newARCClient(cfg.Network, cfg.ARCBaseURLs, cfg.ARCAPIKey),
 		woc:       newWOCClient(cfg.WOCBaseURL, cfg.WOCAPIKey),
 		bhs:       bhs,
 		config:    cfg,
@@ -173,8 +173,18 @@ func (n *arcNode) ListUnspent(ctx context.Context, addr string) ([]UTXO, error) 
 
 func (n *arcNode) SendRawTransaction(ctx context.Context, rawTxHex string) (string, error) {
 	resp, err := n.arc.broadcastRawTx(ctx, rawTxHex, n.config)
+	retryOn465 := false
+	if err != nil && isARCFeeTooLow(err) {
+		retryOn465 = true
+		_, _ = n.arc.resolveFeeRate(ctx, n.config, true) // best-effort refresh for next build/broadcast attempt
+		resp, err = n.arc.broadcastRawTx(ctx, rawTxHex, n.config)
+	}
 	if err != nil {
-		return "", fmt.Errorf("ARC broadcast: %w", err)
+		retry := 0
+		if retryOn465 {
+			retry = 1
+		}
+		return "", fmt.Errorf("ARC broadcast: %w (retry_on_465=%d)", err, retry)
 	}
 	if isARCRejectedStatus(resp.txStatusValue()) {
 		return "", fmt.Errorf("ARC broadcast rejected: status=%s title=%q detail=%q extra=%q",
