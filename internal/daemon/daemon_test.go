@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -1857,6 +1859,57 @@ func TestDaemon_PersistInvoice_DisabledWhenNoDirSet(t *testing.T) {
 	// invoiceDir is empty — persistence should be a no-op.
 	inv := &InvoiceRecord{ID: "test-123", Paid: true}
 	assert.NoError(t, d.persistInvoice(inv))
+}
+
+func TestDaemon_RecoversUnpaidInvoicesOnStart(t *testing.T) {
+	d, _, _, _ := newTestDaemon(t)
+	dir := t.TempDir()
+	d.invoiceDir = dir
+
+	inv := &InvoiceRecord{
+		ID:     "unpaid-recover-test",
+		Paid:   false,
+		Expiry: time.Now().Add(10 * time.Minute),
+	}
+	require.NoError(t, d.persistInvoice(inv))
+
+	d.invoicesMu.Lock()
+	d.invoices = make(map[string]*InvoiceRecord)
+	d.invoicesMu.Unlock()
+
+	d.recoverPersistedInvoices()
+
+	d.invoicesMu.RLock()
+	defer d.invoicesMu.RUnlock()
+	loaded, ok := d.invoices["unpaid-recover-test"]
+	require.True(t, ok, "unpaid unexpired invoice should be recovered")
+	assert.False(t, loaded.Paid)
+}
+
+func TestDaemon_EvictionRemovesDiskFile(t *testing.T) {
+	d, _, _, _ := newTestDaemon(t)
+	dir := t.TempDir()
+	d.invoiceDir = dir
+
+	inv := &InvoiceRecord{
+		ID:     "evict-disk-test",
+		Paid:   false,
+		Expiry: time.Now().Add(-1 * time.Minute),
+	}
+	require.NoError(t, d.persistInvoice(inv))
+
+	d.invoicesMu.Lock()
+	d.invoices[inv.ID] = inv
+	d.invoicesMu.Unlock()
+
+	path := filepath.Join(dir, inv.ID+".json")
+	_, err := os.Stat(path)
+	require.NoError(t, err)
+
+	d.evictExpiredInvoices()
+
+	_, err = os.Stat(path)
+	assert.True(t, os.IsNotExist(err), "disk file should be removed after eviction")
 }
 
 // --- handleVersions Tests ---

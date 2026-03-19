@@ -545,7 +545,9 @@ func (d *Daemon) loadInvoice(invoiceID string) (*InvoiceRecord, error) {
 	return &inv, nil
 }
 
-// recoverPersistedInvoices loads paid invoices from disk on startup.
+// recoverPersistedInvoices loads unexpired invoices from disk on startup.
+// Both paid invoices (regardless of expiry) and unpaid invoices that have not
+// yet expired are recovered so that in-flight purchases survive a restart.
 func (d *Daemon) recoverPersistedInvoices() {
 	if d.invoiceDir == "" {
 		return
@@ -568,7 +570,11 @@ func (d *Daemon) recoverPersistedInvoices() {
 		if unmarshalErr := json.Unmarshal(data, &inv); unmarshalErr != nil {
 			continue
 		}
-		if inv.Paid && inv.ID != "" {
+		if inv.ID == "" {
+			continue
+		}
+		// Recover both paid and unpaid invoices that haven't expired.
+		if inv.Paid || time.Now().Before(inv.Expiry) {
 			d.invoices[inv.ID] = &inv
 		}
 	}

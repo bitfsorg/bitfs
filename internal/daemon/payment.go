@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -152,6 +154,11 @@ func (d *Daemon) servePaidContent(w http.ResponseWriter, node *NodeInfo) {
 	d.invoicesMu.Lock()
 	d.invoices[inv.ID] = record
 	d.invoicesMu.Unlock()
+
+	// Persist new invoice to disk for crash recovery.
+	if err := d.persistInvoice(record); err != nil {
+		log.Printf("WARN: failed to persist invoice %s: %v", inv.ID, err)
+	}
 
 	// Set payment HTTP headers and return 402 status via libbitfs/payment.
 	w.Header().Set("Content-Type", "application/json")
@@ -726,6 +733,13 @@ func (d *Daemon) evictExpiredInvoices() int {
 			}
 		}
 		d.usedTxIDsMu.Unlock()
+	}
+
+	// Phase 3: remove evicted invoice files from disk.
+	if d.invoiceDir != "" {
+		for _, id := range evictedIDs {
+			_ = os.Remove(filepath.Join(d.invoiceDir, id+".json"))
+		}
 	}
 
 	return len(evictedIDs)
