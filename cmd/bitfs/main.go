@@ -17,7 +17,7 @@ import (
 
 // Version is the current build version of the bitfs CLI.
 // Overridden at build time via -ldflags "-X main.Version=...".
-var Version = "0.1.0-dev"
+var Version = "0.0.1"
 
 // Exit codes.
 const (

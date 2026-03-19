@@ -2,6 +2,10 @@
 
 Unix-style decentralized encrypted file system. Provides a CLI for file owners and a suite of read-only tools for visitors.
 
+**Current release: v0.0.1** — initial release targeting early technical users. See [CHANGELOG.md](CHANGELOG.md) and [known limitations](docs/known-limitations.md) before deploying.
+
+> Recommendation for first use: run on testnet (`--network testnet`). Mainnet BSV is real money.
+
 ## Prerequisites
 
 - Go >= 1.25
@@ -10,20 +14,21 @@ Unix-style decentralized encrypted file system. Provides a CLI for file owners a
 ## Quick Start
 
 ```bash
-# Build
-go build ./cmd/bitfs
+# Build all binaries
+go build ./cmd/...
 
-# Initialize wallet
-bitfs wallet init
+# Initialize wallet — choose network once (testnet recommended for first use)
+bitfs wallet init --network testnet
 
-# Start daemon
-bitfs daemon
+# Start daemon (reads network from wallet config)
+bitfs daemon start
 
 # Basic file operations
 bitfs put myfile.txt /docs/
 bitfs mkdir /projects
-bitfs ls /
 ```
+
+For the full workflow (funding, vault management, selling, buying, publishing), see [docs/user-guide.md](docs/user-guide.md).
 
 ## Architecture
 
