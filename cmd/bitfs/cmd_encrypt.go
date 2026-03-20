@@ -45,6 +45,13 @@ func runEncrypt(args []string) int {
 	}
 	defer func() { _ = eng.Close() }()
 
+	// Configure blockchain for auto-broadcast.
+	cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir))
+	if cfgErr != nil {
+		cfg = config.DefaultConfig()
+	}
+	configureChain(eng, "", "", "", cfg.Network)
+
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
