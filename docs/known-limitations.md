@@ -13,7 +13,7 @@
 
 - **Write permission is application-layer enforced** — not cryptographically enforced via covenant; planned for v0.0.2+
 - **share_list field parsed but not enforced** — parser accepts the field for forward compatibility; access control uses acl_ref and access mode only
-- **Pricing unit is sat/KB in code** — design docs reference sat/byte; will be aligned in a future release
+- **ARC requires API key** — the default ARC endpoint (arc.taal.com) returns 401 without a key; broadcast falls back to WoC's `/tx/raw` endpoint which works without authentication
 
 ## Naming
 
