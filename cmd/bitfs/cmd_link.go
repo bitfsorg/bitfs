@@ -51,7 +51,7 @@ func runLink(args []string) int {
 	if cfgErr != nil {
 		cfg = config.DefaultConfig()
 	}
-	configureChain(eng, "", "", "", cfg.Network)
+	if cfg.Network != "regtest" { configureChain(eng, "", "", "", cfg.Network) }
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
@@ -69,6 +69,7 @@ func runLink(args []string) int {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitError
 	}
+
 
 	fmt.Println(result.Message)
 	if result.TxHex != "" {
