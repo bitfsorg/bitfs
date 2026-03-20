@@ -7,7 +7,7 @@
 
 ## Network
 
-- **Mainnet requires own RPC node** — CLI connects to BSV via JSON-RPC only; no built-in WoC/ARC REST API support. Mainnet users must provide `--rpc-url` pointing to their own BSV node or a hosted RPC service. Regtest and testnet presets connect to localhost by default.
+- **Regtest requires own RPC node** — Mainnet and testnet auto-connect via WoC (queries) + ARC (broadcast). Regtest still requires `--rpc-url` pointing to a local BSV node. Optional: set `BITFS_WOC_API_KEY` / `BITFS_ARC_API_KEY` for higher rate limits.
 
 ## Design Limitations
 
