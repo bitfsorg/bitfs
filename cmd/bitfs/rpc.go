@@ -13,7 +13,9 @@ import (
 )
 
 // configureChain resolves RPC configuration and attaches a BlockchainService
-// to the vault. If no RPC URL can be resolved, the vault stays in offline mode.
+// to the vault. If RPC is explicitly configured, it is used for any network.
+// Otherwise, for mainnet/testnet, the composite WoC+ARC backend is selected
+// automatically. If neither is available, the vault stays in offline mode.
 func configureChain(v *vault.Vault, rpcURL, rpcUser, rpcPass, netName string) {
 	flags := &network.RPCConfig{
 		URL:      rpcURL,
@@ -23,13 +25,29 @@ func configureChain(v *vault.Vault, rpcURL, rpcUser, rpcPass, netName string) {
 
 	env := envToMap()
 	cfg, err := network.ResolveConfig(flags, env, netName)
-	if err != nil {
-		// No valid config — stay offline.
+	if err == nil {
+		// RPC explicitly configured — use it (any network).
+		v.Chain = network.NewRPCClient(*cfg)
+		return
+	}
+
+	// No RPC: try WoC+ARC for mainnet/testnet.
+	wocBase, arcBase, wocErr := network.DefaultWoCARCEndpoints(netName)
+	if wocErr != nil {
 		fmt.Fprintf(os.Stderr, "Note: no RPC configured, running in offline mode (%v)\n", err)
 		return
 	}
 
-	v.Chain = network.NewRPCClient(*cfg)
+	wocKey := os.Getenv("BITFS_WOC_API_KEY")
+	arcKey := os.Getenv("BITFS_ARC_API_KEY")
+	if arcURL := os.Getenv("BITFS_ARC_URL"); arcURL != "" {
+		arcBase = arcURL
+	}
+
+	v.Chain = network.NewWoCARCClient(network.WoCARCConfig{
+		WoC: network.WoCConfig{BaseURL: wocBase, APIKey: wocKey},
+		ARC: network.ARCConfig{BaseURL: arcBase, APIKey: arcKey},
+	})
 }
 
 // envToMap reads BITFS_RPC_* environment variables into a map.
