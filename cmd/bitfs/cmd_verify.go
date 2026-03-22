@@ -24,7 +24,7 @@ func runVerify(args []string) int {
 	rpcUser := fs.String("rpc-user", "", "RPC username")
 	rpcPass := fs.String("rpc-pass", "", "RPC password")
 	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
-	netName := fs.String("network", "regtest", "network name (regtest, testnet, mainnet)")
+	netName := fs.String("network", "", "network name override (auto-detected from wallet config)")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
@@ -37,9 +37,6 @@ func runVerify(args []string) int {
 		fs.PrintDefaults()
 		return exitUsageError
 	}
-
-	// If --datadir was not explicitly provided, pick a network-specific default.
-	applyNetworkDefaultDataDir(fs, dataDir, *netName)
 
 	txid := fs.Arg(0)
 
@@ -56,7 +53,17 @@ func runVerify(args []string) int {
 	}
 	defer func() { _ = eng.Close() }()
 
-	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, *netName, *arcURL)
+	// Auto-detect network from wallet config; --network overrides.
+	network := *netName
+	if network == "" {
+		cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir))
+		if cfgErr != nil {
+			cfg = config.DefaultConfig()
+		}
+		network = cfg.Network
+	}
+
+	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, network, *arcURL)
 	if err := eng.InitSPV(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitNetError
