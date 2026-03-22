@@ -30,6 +30,7 @@ func runWalletFund(args []string) int {
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL (override)")
 	rpcUser := fs.String("rpc-user", "", "RPC username (override)")
 	rpcPass := fs.String("rpc-pass", "", "RPC password (override)")
+	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	addressOnly := fs.Bool("address-only", false, "print deposit address and QR only (skip network refresh)")
 
 	if err := fs.Parse(args); err != nil {
@@ -91,7 +92,7 @@ func runWalletFund(args []string) int {
 	if cfgErr != nil {
 		cfg = config.DefaultConfig()
 	}
-	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, cfg.Network)
+	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, cfg.Network, *arcURL)
 	if !eng.IsOnline() {
 		fmt.Fprintf(os.Stderr, "Error: cannot query network — no RPC configured\n")
 		fmt.Fprintf(os.Stderr, "Set BITFS_RPC_URL or use --rpc-url flag.\n")

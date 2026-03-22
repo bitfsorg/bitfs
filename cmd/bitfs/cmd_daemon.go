@@ -55,6 +55,7 @@ func runDaemonStart(args []string) int {
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL")
 	rpcUser := fs.String("rpc-user", "", "RPC username")
 	rpcPass := fs.String("rpc-pass", "", "RPC password")
+	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	netName := fs.String("network", "regtest", "network name (regtest, testnet, mainnet)")
 
 	if err := fs.Parse(args); err != nil {
@@ -75,7 +76,7 @@ func runDaemonStart(args []string) int {
 	defer func() { _ = eng.Close() }()
 
 	// Wire up blockchain service if RPC is configured.
-	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, *netName)
+	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, *netName, *arcURL)
 
 	// Initialize SPV client and persistent store.
 	if err := eng.InitSPV(); err != nil {

@@ -16,7 +16,7 @@ import (
 // to the vault. If RPC is explicitly configured, it is used for any network.
 // Otherwise, for mainnet/testnet, the composite WoC+ARC backend is selected
 // automatically. If neither is available, the vault stays in offline mode.
-func configureChain(v *vault.Vault, rpcURL, rpcUser, rpcPass, netName string) {
+func configureChain(v *vault.Vault, rpcURL, rpcUser, rpcPass, netName string, arcURLOverride ...string) {
 	flags := &network.RPCConfig{
 		URL:      rpcURL,
 		User:     rpcUser,
@@ -40,7 +40,9 @@ func configureChain(v *vault.Vault, rpcURL, rpcUser, rpcPass, netName string) {
 
 	wocKey := os.Getenv("BITFS_WOC_API_KEY")
 	arcKey := os.Getenv("BITFS_ARC_API_KEY")
-	if arcURL := os.Getenv("BITFS_ARC_URL"); arcURL != "" {
+	if len(arcURLOverride) > 0 && arcURLOverride[0] != "" {
+		arcBase = arcURLOverride[0]
+	} else if arcURL := os.Getenv("BITFS_ARC_URL"); arcURL != "" {
 		arcBase = arcURL
 	}
 

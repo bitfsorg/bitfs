@@ -319,6 +319,7 @@ func runWalletBalance(args []string) int {
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL (override)")
 	rpcUser := fs.String("rpc-user", "", "RPC username (override)")
 	rpcPass := fs.String("rpc-pass", "", "RPC password (override)")
+	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
@@ -343,7 +344,7 @@ func runWalletBalance(args []string) int {
 		if cfgErr != nil {
 			cfg = config.DefaultConfig()
 		}
-		configureChain(eng, *rpcURL, *rpcUser, *rpcPass, cfg.Network)
+		configureChain(eng, *rpcURL, *rpcUser, *rpcPass, cfg.Network, *arcURL)
 		if !eng.IsOnline() {
 			fmt.Fprintf(os.Stderr, "Error: --refresh requires a blockchain connection (configure RPC)\n")
 			return exitNetError

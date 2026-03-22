@@ -23,6 +23,7 @@ func runVerify(args []string) int {
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL")
 	rpcUser := fs.String("rpc-user", "", "RPC username")
 	rpcPass := fs.String("rpc-pass", "", "RPC password")
+	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	netName := fs.String("network", "regtest", "network name (regtest, testnet, mainnet)")
 
 	if err := fs.Parse(args); err != nil {
@@ -55,7 +56,7 @@ func runVerify(args []string) int {
 	}
 	defer func() { _ = eng.Close() }()
 
-	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, *netName)
+	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, *netName, *arcURL)
 	if err := eng.InitSPV(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return exitNetError
