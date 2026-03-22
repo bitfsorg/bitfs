@@ -95,6 +95,11 @@ func publishDomain(v *vault.Vault, dns DNSResolver, opts *PublishOpts) (*vault.R
 		Verified:   verified,
 	})
 
+	// Persist state immediately so the binding survives process restart.
+	if err := v.State.Save(); err != nil {
+		return nil, fmt.Errorf("publish: persist state after publish: %w", err)
+	}
+
 	return &vault.Result{
 		Message: msg.String(),
 		NodePub: rootPubHex,
