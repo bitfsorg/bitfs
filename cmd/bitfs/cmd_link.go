@@ -35,13 +35,13 @@ func runLink(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -55,7 +55,7 @@ func runLink(args []string) int {
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitNotFound
 	}
 
@@ -66,7 +66,7 @@ func runLink(args []string) int {
 		Soft:       *soft,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitError
 	}
 

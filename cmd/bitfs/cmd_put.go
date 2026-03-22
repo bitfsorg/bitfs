@@ -56,7 +56,7 @@ func runPut(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("put", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 
@@ -65,7 +65,7 @@ func runPut(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("put", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -82,7 +82,7 @@ func runPut(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("put", exitNotFound, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitNotFound
 	}
 
@@ -96,7 +96,7 @@ func runPut(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("put", exitError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitError
 	}
 

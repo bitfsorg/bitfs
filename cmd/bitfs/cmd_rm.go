@@ -37,7 +37,7 @@ func runRm(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("rm", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 
@@ -46,7 +46,7 @@ func runRm(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("rm", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -63,7 +63,7 @@ func runRm(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("rm", exitNotFound, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitNotFound
 	}
 
@@ -75,7 +75,7 @@ func runRm(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("rm", exitError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitError
 	}
 

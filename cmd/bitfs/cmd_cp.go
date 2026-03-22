@@ -38,7 +38,7 @@ func runCp(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("cp", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 
@@ -47,7 +47,7 @@ func runCp(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("cp", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -64,7 +64,7 @@ func runCp(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("cp", exitNotFound, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitNotFound
 	}
 
@@ -77,7 +77,7 @@ func runCp(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("cp", exitError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitError
 	}
 

@@ -37,7 +37,7 @@ func runMkdir(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("mkdir", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 
@@ -46,7 +46,7 @@ func runMkdir(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("mkdir", exitWalletError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -63,7 +63,7 @@ func runMkdir(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("mkdir", exitNotFound, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitNotFound
 	}
 
@@ -75,7 +75,7 @@ func runMkdir(args []string) int {
 		if *jsonOut {
 			return writeJSONErr("mkdir", exitError, err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		printError(err)
 		return exitError
 	}
 
