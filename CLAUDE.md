@@ -21,10 +21,10 @@ go test ./...                    # Run all unit tests (~512 cases)
 go test ./internal/method42/     # Run single package tests
 go test ./... -v -count=1        # Verbose, no cache
 go build ./cmd/bitfs             # Build main CLI binary
-go build ./cmd/...               # Build all binaries (bitfs, bls, bcat, bget, bstat, btree)
+go build ./cmd/...               # Build all binaries (bitfs, bls, bcat, bget, bmget, bstat, btree)
 ```
 
-Module: `github.com/tongxiaofeng/bitfs`, Go 1.25.6
+Module: `github.com/bitfsorg/bitfs`, Go 1.25.6
 
 ## Project Structure
 
@@ -37,13 +37,16 @@ bitfs/                                  ← THIS DIRECTORY (code implementation)
 │   ├── bls/                             Read-only: list directory
 │   ├── bcat/                            Read-only: output file contents to stdout
 │   ├── bget/                            Read-only: download file to local filesystem
+│   ├── bmget/                           Read-only: batch download multiple files
 │   ├── bstat/                           Read-only: file metadata (size, hash, owner, access)
 │   └── btree/                           Read-only: recursive directory tree
 ├── internal/                          ← Application layer
-│   ├── buyer/                           Purchase state machine
+│   ├── banner/                          CLI banner display
+│   ├── buy/                             Purchase state machine
 │   ├── client/                          b-tools HTTP client
 │   ├── daemon/                          Daemon HTTP server (LFCP, WebMCP, content negotiation)
-│   └── engine/                          Unified business logic layer
+│   ├── engine/                          Unified business logic layer
+│   └── publish/                         Content publishing logic
 ├── docs/                              ← Documentation
 │   ├── spec/                            Module specifications (01-method42 to 11-cmd-btools, TASKS.md)
 │   └── plans/                           Design & implementation plans
