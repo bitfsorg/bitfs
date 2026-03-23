@@ -105,10 +105,8 @@ func promptNetwork() (string, error) {
 		idx = 1
 	case "3":
 		idx = 2
-	case "4":
-		idx = 3
 	default:
-		return "", fmt.Errorf("invalid choice %q; enter 1–4", input)
+		return "", fmt.Errorf("invalid choice %q; enter 1-%d", input, len(networks))
 	}
 	return networks[idx].name, nil
 }
