@@ -48,7 +48,7 @@ bitfs/                                  ← THIS DIRECTORY (code implementation)
 │   ├── engine/                          Unified business logic layer
 │   └── publish/                         Content publishing logic
 ├── docs/                              ← Documentation
-│   ├── spec/                            Module specifications (01-method42 to 11-cmd-btools, TASKS.md)
+│   ├── spec/                            Module specifications (01-method42 to 13-network, TASKS.md)
 │   └── plans/                           Design & implementation plans
 ├── integration/                       ← Integration test suites (276 cases)
 ├── e2e/                               ← Docker regtest end-to-end tests
@@ -65,7 +65,7 @@ Design docs are in the parent directory. For this project, read:
 | `../design/bitfs/1-ConceptDesign.zh.md` | Vision, core concepts, 86 design decisions |
 | `../design/bitfs/2-SystemDesign.zh.md` | 23 sections: modules, interfaces, data flow |
 | `../design/bitfs/3-DetailedDesign.zh.md` | Algorithms, data structures, protocols |
-| `../design/bitfs/4-TestDesign.zh.md` | ~980 test cases across 27 categories |
+| `../design/bitfs/4-TestDesign.zh.md` | ~1022 test cases across 32 categories |
 
 Design docs are in Chinese. Code, specs, and comments are in English.
 
