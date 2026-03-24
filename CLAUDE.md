@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **BitFS** is a Unix-style decentralized encrypted file system on BSV blockchain. Agent-first design with Unix CLI tools.
 
 Core concepts:
-- **Metanet DAG**: Blockchain-based DAG implementing Unix filesystem (inode=P_node, dirent=ChildEntry, soft/hard links)
+- **Metanet DAG**: Blockchain-based DAG implementing Unix filesystem (inode=P_node, dirent=ChildEntry, soft links)
 - **Method 42**: Deterministic per-file ECDH encryption (all data encrypted by default), key formula: `aes_key = HKDF-SHA256(ECDH(D_node, P_node).x, key_hash)`
 - **SPV mode**: Local tx + Merkle proof, never queries blockchain
 - **HTLC atomic swap**: Trustless buy/sell via hash time-locked contracts
@@ -61,7 +61,7 @@ Design docs are in the parent directory. For this project, read:
 
 | File | Purpose |
 |------|---------|
-| `../design/0-OverallDesign.zh.md` | Two-product ecosystem overview, three-layer architecture |
+| `../design/OverallDesign.zh.md` | Two-product ecosystem overview, three-layer architecture |
 | `../design/bitfs/1-ConceptDesign.zh.md` | Vision, core concepts, 86 design decisions |
 | `../design/bitfs/2-SystemDesign.zh.md` | 23 sections: modules, interfaces, data flow |
 | `../design/bitfs/3-DetailedDesign.zh.md` | Algorithms, data structures, protocols |
@@ -75,7 +75,7 @@ Design docs are in Chinese. Code, specs, and comments are in English.
 |---------|---------|
 | `github.com/bsv-blockchain/go-sdk` v1.2.18 | Only BSV dependency (ec, bip32, bip39, transaction, script) |
 | `github.com/stretchr/testify` v1.11.1 | Test assertions |
-| `golang.org/x/crypto` v0.47.0 | HKDF, Argon2id |
+| `golang.org/x/crypto` v0.48.0 | HKDF, Argon2id |
 
 ## Coding Conventions
 
