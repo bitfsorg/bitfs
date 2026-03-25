@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // validNetworks lists the accepted --network values.
@@ -30,6 +31,8 @@ func resolveNetworkDataDir(fs *flag.FlagSet, network *string, dataDir *string) b
 	if *network == "" {
 		return true
 	}
+	// Normalize: trim spaces, lowercase.
+	*network = strings.ToLower(strings.TrimSpace(*network))
 	if !validNetworks[*network] {
 		fmt.Fprintf(os.Stderr, "Error: unknown network %q (must be mainnet, testnet, or regtest)\n", *network)
 		return false

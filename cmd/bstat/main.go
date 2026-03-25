@@ -39,6 +39,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 			printUsage(stdout)
 			return 0
 		}
+		if a == "--version" {
+			fmt.Fprintf(stdout, "%s version 0.0.1\n", "bstat")
+			return 0
+		}
 		if a == "--" {
 			break
 		}

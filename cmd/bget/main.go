@@ -54,6 +54,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			printUsage(stdout)
 			return 0
 		}
+		// Note: bget has --version <N> flag for file version selection,
+		// so we don't intercept --version here. Version is shown in --help.
 		if a == "--" {
 			break
 		}

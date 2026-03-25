@@ -128,7 +128,7 @@ func writeJSONErr(command string, code int, err error) int {
 	return writeJSONResult(&cmdResult{
 		OK:      false,
 		Command: command,
-		Error:   err.Error(),
+		Error:   userMessage(err),
 		Code:    code,
 	})
 }

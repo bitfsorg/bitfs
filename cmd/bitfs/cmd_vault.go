@@ -14,6 +14,23 @@ import (
 	"github.com/bitfsorg/libbitfs-go/config"
 )
 
+// validateVaultName checks that a vault name is valid.
+func validateVaultName(name string) error {
+	if name == "" {
+		return fmt.Errorf("vault name cannot be empty")
+	}
+	if len(name) > 64 {
+		return fmt.Errorf("vault name too long (max 64 characters)")
+	}
+	if strings.Contains(name, "/") {
+		return fmt.Errorf("vault name cannot contain '/'")
+	}
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("vault name cannot contain '..'")
+	}
+	return nil
+}
+
 // runVault dispatches vault subcommands.
 func runVault(args []string) int {
 	if len(args) == 0 {
@@ -70,12 +87,8 @@ func runVaultCreate(args []string) int {
 	}
 
 	name := strings.TrimSpace(fs.Arg(0))
-	if name == "" {
-		fmt.Fprintf(os.Stderr, "Error: vault name cannot be empty\n")
-		return exitUsageError
-	}
-	if len(name) > 64 {
-		fmt.Fprintf(os.Stderr, "Error: vault name too long (max 64 characters)\n")
+	if err := validateVaultName(name); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		return exitUsageError
 	}
 
@@ -173,12 +186,8 @@ func runVaultRename(args []string) int {
 
 	oldName := fs.Arg(0)
 	newName := strings.TrimSpace(fs.Arg(1))
-	if newName == "" {
-		fmt.Fprintf(os.Stderr, "Error: vault name cannot be empty\n")
-		return exitUsageError
-	}
-	if len(newName) > 64 {
-		fmt.Fprintf(os.Stderr, "Error: vault name too long (max 64 characters)\n")
+	if err := validateVaultName(newName); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		return exitUsageError
 	}
 

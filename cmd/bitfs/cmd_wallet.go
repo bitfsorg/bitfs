@@ -262,9 +262,13 @@ func runWalletShow(args []string) int {
 		return exitWalletError
 	}
 
-	// Load network from config file; default to mainnet if config is missing.
+	// Load network: prefer --network flag, then config file, then mainnet default.
 	netCfg := &wallet.MainNet
-	if cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir)); cfgErr == nil {
+	if *network != "" {
+		if resolved, netErr := wallet.GetNetwork(*network); netErr == nil {
+			netCfg = resolved
+		}
+	} else if cfg, cfgErr := config.LoadConfig(config.ConfigPath(*dataDir)); cfgErr == nil {
 		if resolved, netErr := wallet.GetNetwork(cfg.Network); netErr == nil {
 			netCfg = resolved
 		}
