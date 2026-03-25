@@ -20,10 +20,12 @@ func runVaultExport(args []string) int {
 	password := fs.String("password", "", "wallet password (for testing)")
 	format := fs.String("format", "wif", "export format: wif, hex, or seed-path")
 	yes := fs.Bool("yes", false, "skip confirmation prompt")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault export <name> [--format wif|hex|seed-path] [--yes]\n")

@@ -20,10 +20,12 @@ func runMv(args []string) int {
 	jsonOut := fs.Bool("json", false, "JSON output")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs mv <src> <dst> [--vault N] [--json]\n")

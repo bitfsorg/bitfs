@@ -51,10 +51,12 @@ func runPaymailBind(args []string) int {
 	fs := flag.NewFlagSet("paymail bind", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs paymail bind <alias> <vault>\n")
@@ -96,10 +98,12 @@ func runPaymailUnbind(args []string) int {
 	fs := flag.NewFlagSet("paymail unbind", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs paymail unbind <alias>\n")
@@ -141,10 +145,12 @@ func runPaymailList(args []string) int {
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 	jsonOut := fs.Bool("json", false, "output as JSON")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	pass, err := resolvePassword(*password)
 	if err != nil {

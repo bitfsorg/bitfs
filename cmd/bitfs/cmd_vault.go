@@ -54,10 +54,12 @@ func runVaultCreate(args []string) int {
 	fs := flag.NewFlagSet("vault create", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault create <name>\n")
@@ -103,10 +105,12 @@ func runVaultList(args []string) int {
 	fs := flag.NewFlagSet("vault list", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
@@ -140,10 +144,12 @@ func runVaultRename(args []string) int {
 	fs := flag.NewFlagSet("vault rename", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault rename <old-name> <new-name>\n")
@@ -179,10 +185,12 @@ func runVaultDelete(args []string) int {
 	fs := flag.NewFlagSet("vault delete", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault delete <name>\n")

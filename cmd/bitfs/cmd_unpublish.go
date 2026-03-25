@@ -19,10 +19,12 @@ func runUnpublish(args []string) int {
 	fs := flag.NewFlagSet("unpublish", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs unpublish <domain>\n")

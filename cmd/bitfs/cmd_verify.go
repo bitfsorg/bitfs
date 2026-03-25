@@ -29,6 +29,7 @@ func runVerify(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, netName, dataDir)
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs verify [options] <txid>\n\n")

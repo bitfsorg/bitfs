@@ -227,10 +227,12 @@ func runWalletShow(args []string) int {
 	fs := flag.NewFlagSet("wallet show", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing; normally prompted)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	// Load wallet.
 	walletPath := filepath.Join(*dataDir, "wallet.enc")
@@ -320,10 +322,12 @@ func runWalletBalance(args []string) int {
 	rpcUser := fs.String("rpc-user", "", "RPC username (override)")
 	rpcPass := fs.String("rpc-pass", "", "RPC password (override)")
 	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	pass, err := resolvePassword(*password)
 	if err != nil {

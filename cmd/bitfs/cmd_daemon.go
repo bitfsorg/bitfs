@@ -151,10 +151,12 @@ func runDaemonStart(args []string) int {
 func runDaemonStop(args []string) int {
 	fs := flag.NewFlagSet("daemon stop", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	pidPath := filepath.Join(*dataDir, "daemon.pid")
 	pidData, err := os.ReadFile(pidPath)

@@ -32,10 +32,12 @@ func runWalletFund(args []string) int {
 	rpcPass := fs.String("rpc-pass", "", "RPC password (override)")
 	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	addressOnly := fs.Bool("address-only", false, "print deposit address and QR only (skip network refresh)")
+	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
+	resolveNetworkDataDir(fs, network, dataDir)
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
