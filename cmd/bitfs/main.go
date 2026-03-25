@@ -51,6 +51,8 @@ func run(args []string) int {
 		return runVault(cmdArgs)
 	case "paymail":
 		return runPaymail(cmdArgs)
+	case "ls":
+		return runLs(cmdArgs)
 	case "cat":
 		return runCat(cmdArgs)
 	case "get":
@@ -85,6 +87,8 @@ func run(args []string) int {
 		return runShell(cmdArgs)
 	case "verify":
 		return runVerify(cmdArgs)
+	case "status":
+		return runStatus(cmdArgs)
 	case "--help", "-h", "help":
 		printUsage()
 		return exitSuccess
@@ -141,57 +145,54 @@ func printUsage() {
 Usage:
   bitfs <command> [options]
 
-Wallet Commands:
-  wallet init      Initialize HD wallet
-  wallet show      Show wallet information
-  wallet balance   Show UTXO balance
-  wallet fund      Show deposit address with QR code
+Setup:
+  wallet init       Initialize HD wallet
+  wallet show       Show wallet information
+  wallet balance    Show UTXO balance
+  wallet fund       Show deposit address with QR code
+  vault create      Create a new vault
+  vault list        List all vaults
+  vault rename      Rename a vault
+  vault delete      Delete a vault
+  vault export      Export vault root private key
+  paymail bind      Bind a vault to a paymail alias
+  paymail unbind    Remove a paymail alias binding
+  paymail list      List all paymail bindings
+  daemon start      Start the daemon
+  daemon stop       Stop the daemon
 
-Vault Commands:
-  vault create   Create a new vault
-  vault list     List all vaults
-  vault rename   Rename a vault
-  vault delete   Delete a vault
-  vault export   Export vault root private key
+Files:
+  ls               List directory contents
+  cat              View file contents
+  put              Upload a file (use "-" for stdin)
+  get              Download a file
+  mput             Upload a directory recursively
+  mget             Download a directory recursively
+  mkdir            Create a directory
+  rm               Remove a file or directory
+  mv               Move or rename a file
+  cp               Copy a file
+  link             Create a hard or soft link
 
-Paymail Commands:
-  paymail bind     Bind a vault to a paymail alias
-  paymail unbind   Remove a paymail alias binding
-  paymail list     List all paymail bindings
+Access:
+  sell             Set price for content
+  encrypt          Encrypt content (free -> private)
+  publish          Bind a domain via DNSLink
+  unpublish        Remove a domain binding
 
-File Commands:
-  cat            View file contents
-  get            Download a file
-  mget           Download a directory recursively
-  mput           Upload a directory recursively
-  put            Upload a file
-  mkdir          Create a directory
-  rm             Remove a file or directory
-  mv             Move or rename a file
-  cp             Copy a file
-  link           Create a hard or soft link
-
-Trading Commands:
-  sell           Set price for content
-  encrypt        Encrypt content (free -> private)
-
-Publishing Commands:
-  publish        Bind a domain via DNSLink
-  unpublish      Remove a domain binding
-
-Daemon Commands:
-  daemon start   Start the daemon
-  daemon stop    Stop the daemon
-
-Verification:
-  verify         SPV-verify a transaction
-
-Interactive:
-  shell          FTP-style interactive REPL
+Tools:
+  status           Show wallet, vault, and daemon overview
+  shell            Interactive FTP-style REPL
+  verify           SPV-verify a transaction
 
 Options:
-  --help         Show this help message
-  --version      Show version
+  --help           Show this help message
+  --version        Show version
+
+Environment variables:
+  BITFS_PASSWORD   Wallet password (avoids --password flag)
+  BITFS_NETWORK    Default network (avoids --network flag)
+  BITFS_DATADIR    Override data directory
 
 Run 'bitfs <command> --help' for command-specific options.
 `, Version)

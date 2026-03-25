@@ -28,6 +28,12 @@ func addNetworkFlag(fs *flag.FlagSet) *string {
 // explicitly set. Returns false if the network name is invalid.
 // Call after fs.Parse().
 func resolveNetworkDataDir(fs *flag.FlagSet, network *string, dataDir *string) bool {
+	// Fall back to BITFS_NETWORK env var when flag is empty.
+	if *network == "" {
+		if envNet := os.Getenv("BITFS_NETWORK"); envNet != "" {
+			*network = envNet
+		}
+	}
 	if *network == "" {
 		return true
 	}

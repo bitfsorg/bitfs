@@ -16,7 +16,7 @@ import (
 // the password after use via zeroString.
 func promptPassword(prompt string) (string, error) {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return "", fmt.Errorf("password prompt requires interactive terminal; use --password flag")
+		return "", fmt.Errorf("password prompt requires interactive terminal; use --password flag or BITFS_PASSWORD env")
 	}
 	fmt.Fprint(os.Stderr, prompt)
 	pass, err := term.ReadPassword(int(os.Stdin.Fd()))
@@ -54,11 +54,13 @@ func promptPasswordConfirm() (string, error) {
 	return pass1, nil
 }
 
-// resolvePassword returns the password flag value if non-empty,
-// otherwise prompts the user interactively.
+// resolvePassword returns the password from: flag > BITFS_PASSWORD env > interactive prompt.
 func resolvePassword(flagValue string) (string, error) {
 	if flagValue != "" {
 		return flagValue, nil
+	}
+	if envPass := os.Getenv("BITFS_PASSWORD"); envPass != "" {
+		return envPass, nil
 	}
 	return promptPassword("Enter wallet password: ")
 }

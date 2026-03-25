@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/bitfsorg/libbitfs-go/config"
@@ -64,13 +65,36 @@ Options:
 		return exitUsageError
 	}
 
-	// Verify local file exists.
-	if _, err := os.Stat(localFile); os.IsNotExist(err) {
-		if *jsonOut {
-			return writeJSONErr("put", exitNotFound, fmt.Errorf("local file %q not found", localFile))
+	// Support "-" as stdin (Unix pipe convention).
+	if localFile == "-" {
+		tmpFile, tmpErr := os.CreateTemp("", "bitfs-stdin-*")
+		if tmpErr != nil {
+			if *jsonOut {
+				return writeJSONErr("put", exitError, tmpErr)
+			}
+			fmt.Fprintf(os.Stderr, "Error: failed to create temp file for stdin: %v\n", tmpErr)
+			return exitError
 		}
-		fmt.Fprintf(os.Stderr, "Error: local file %q not found\n", localFile)
-		return exitNotFound
+		defer os.Remove(tmpFile.Name())
+		if _, cpErr := io.Copy(tmpFile, os.Stdin); cpErr != nil {
+			tmpFile.Close()
+			if *jsonOut {
+				return writeJSONErr("put", exitError, cpErr)
+			}
+			fmt.Fprintf(os.Stderr, "Error: failed to read stdin: %v\n", cpErr)
+			return exitError
+		}
+		tmpFile.Close()
+		localFile = tmpFile.Name()
+	} else {
+		// Verify local file exists.
+		if _, err := os.Stat(localFile); os.IsNotExist(err) {
+			if *jsonOut {
+				return writeJSONErr("put", exitNotFound, fmt.Errorf("local file %q not found", localFile))
+			}
+			fmt.Fprintf(os.Stderr, "Error: local file %q not found\n", localFile)
+			return exitNotFound
+		}
 	}
 
 	pass, err := resolvePassword(*password)
