@@ -15,6 +15,9 @@ bin/
 /bstat
 /btree
 
+# Test artifacts
+test-results/
+
 # Dashboard build artifacts
 dashboard/node_modules/
 dashboard/dist/
