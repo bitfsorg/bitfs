@@ -43,5 +43,15 @@ func userMessage(err error) string {
 		}
 	}
 
+	// Simplify TLS/x509 errors.
+	if strings.Contains(msg, "x509: certificate") || strings.Contains(msg, "tls: failed to verify") {
+		msg = "network error: TLS certificate verification failed (check system CA certificates)"
+	}
+
+	// Simplify "connection refused" with daemon hint.
+	if strings.Contains(msg, "connection refused") && strings.Contains(msg, "8080") {
+		msg = "connection refused: is the daemon running? (bitfs daemon start)"
+	}
+
 	return msg
 }

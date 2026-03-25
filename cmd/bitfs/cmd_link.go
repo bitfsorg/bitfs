@@ -89,7 +89,7 @@ Options:
 	})
 	if err != nil {
 		printError(err)
-		return exitError
+		return exitNotFound
 	}
 
 

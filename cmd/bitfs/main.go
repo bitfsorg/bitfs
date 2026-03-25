@@ -111,12 +111,13 @@ type cmdResult struct {
 
 // writeJSONResult writes a JSON result to stdout and returns the exit code.
 func writeJSONResult(r *cmdResult) int {
-	data, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(r); err != nil {
 		fmt.Fprintf(os.Stderr, "json marshal: %v\n", err)
 		return exitError
 	}
-	fmt.Fprintln(os.Stdout, string(data))
 	if r.Error != "" {
 		return r.Code
 	}

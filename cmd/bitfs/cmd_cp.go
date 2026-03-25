@@ -97,10 +97,10 @@ Options:
 	})
 	if err != nil {
 		if *jsonOut {
-			return writeJSONErr("cp", exitError, err)
+			return writeJSONErr("cp", exitNotFound, err)
 		}
 		printError(err)
-		return exitError
+		return exitNotFound
 	}
 
 

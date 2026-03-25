@@ -19,6 +19,7 @@ import (
 func runCat(args []string) int {
 	fs := flag.NewFlagSet("cat", flag.ContinueOnError)
 	vaultName := fs.String("vault", "", "vault name")
+	jsonOut := fs.Bool("json", false, "JSON output")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 	force := fs.Bool("force", false, "output binary files without warning")
@@ -58,12 +59,18 @@ Options:
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("cat", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("cat", exitWalletError, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
@@ -71,6 +78,9 @@ Options:
 
 	// Vault resolution kept for CLI flag compatibility; Cat resolves by path.
 	if _, err := eng.ResolveVaultIndex(*vaultName); err != nil {
+		if *jsonOut {
+			return writeJSONErr("cat", exitNotFound, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
@@ -79,12 +89,15 @@ Options:
 		Path: remotePath,
 	})
 	if err != nil {
+		if *jsonOut {
+			return writeJSONErr("cat", exitNotFound, err)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
-		return exitError
+		return exitNotFound
 	}
 
-	// Warn for binary files unless --force.
-	if !*force && !isTextMime(info.MimeType) {
+	// Warn for binary files unless --force or --json.
+	if !*jsonOut && !*force && !isTextMime(info.MimeType) {
 		fmt.Fprintf(os.Stderr, "Binary file (%s, %d bytes). Use --force to output or 'bitfs get' to download.\n", info.MimeType, info.FileSize)
 		return exitError
 	}

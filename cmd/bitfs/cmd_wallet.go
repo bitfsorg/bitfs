@@ -161,6 +161,10 @@ func runWalletInit(args []string) int {
 		}
 	}
 
+	if len(pass) < 8 {
+		fmt.Fprintf(os.Stderr, "WARNING: password is shorter than 8 characters. Consider using a stronger password.\n")
+	}
+
 	// Encrypt and store seed.
 	encrypted, err := wallet.EncryptSeed(seed, pass)
 	if err != nil {
@@ -449,6 +453,7 @@ func loadWalletState(path string) (*wallet.WalletState, error) {
 // loadWalletFromDataDir loads the wallet and state from the data directory.
 // This helper is shared by filesystem command stubs.
 func loadWalletFromDataDir(dataDir, password string) (*wallet.Wallet, *wallet.WalletState, error) {
+	warnDataDirPermissions(dataDir)
 	walletPath := filepath.Join(dataDir, "wallet.enc")
 	encrypted, err := os.ReadFile(walletPath)
 	if err != nil {

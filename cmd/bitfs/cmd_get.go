@@ -17,6 +17,8 @@ import (
 func runGet(args []string) int {
 	fs := flag.NewFlagSet("get", flag.ContinueOnError)
 	vaultName := fs.String("vault", "", "vault name")
+	output := fs.String("o", "", "output filename")
+	fs.StringVar(output, "output", "", "output filename")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 	network := addNetworkFlag(fs)
@@ -52,8 +54,8 @@ Options:
 	}
 
 	remotePath := fs.Arg(0)
-	localPath := ""
-	if fs.NArg() > 1 {
+	localPath := *output
+	if localPath == "" && fs.NArg() > 1 {
 		localPath = fs.Arg(1)
 	}
 
