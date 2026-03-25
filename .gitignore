@@ -7,6 +7,9 @@ bin/
 .env.*
 !.env.example
 
+# GoReleaser output
+dist/
+
 # Stray build artifacts in project root
 /bitfs
 /bls
