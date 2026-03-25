@@ -53,7 +53,7 @@ func TestResolveNetworkDataDir_Regtest(t *testing.T) {
 
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(home, ".regtest"), *dataDir)
+	assert.Equal(t, filepath.Join(home, ".bitfs-regtest"), *dataDir)
 }
 
 func TestResolveNetworkDataDir_ExplicitDataDirTakesPrecedence(t *testing.T) {

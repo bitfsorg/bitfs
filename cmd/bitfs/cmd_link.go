@@ -22,10 +22,30 @@ func runLink(args []string) int {
 	password := fs.String("password", "", "wallet password (for testing)")
 	network := addNetworkFlag(fs)
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `bitfs link — Create a hard or soft link in a BitFS vault
+
+Usage:
+  bitfs link [options] <target> <link-path>
+
+Options:
+`)
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs link <target> <link-path> [--soft] [--vault N]\n")

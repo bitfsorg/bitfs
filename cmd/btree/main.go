@@ -140,7 +140,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(w io.Writer) {
-	banner.PrintTo(w, "0.1.0")
+	banner.PrintTo(w, "0.0.1")
 	fmt.Fprintf(w, `btree - Show directory tree from a BitFS filesystem
 
 Usage:

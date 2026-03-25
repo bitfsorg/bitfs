@@ -22,10 +22,30 @@ func runSell(args []string) int {
 	password := fs.String("password", "", "wallet password (for testing)")
 	network := addNetworkFlag(fs)
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `bitfs sell — Set price for content in a BitFS vault
+
+Usage:
+  bitfs sell [options] <remote-path> <price-sats-per-kb>
+
+Options:
+`)
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs sell <remote-path> --price <sats/KB> [--vault N]\n")

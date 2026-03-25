@@ -37,7 +37,9 @@ func runWalletFund(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	pass, err := resolvePassword(*password)
 	if err != nil {

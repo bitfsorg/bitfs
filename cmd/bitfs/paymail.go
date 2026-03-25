@@ -56,7 +56,9 @@ func runPaymailBind(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs paymail bind <alias> <vault>\n")
@@ -103,7 +105,9 @@ func runPaymailUnbind(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs paymail unbind <alias>\n")
@@ -150,7 +154,9 @@ func runPaymailList(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	pass, err := resolvePassword(*password)
 	if err != nil {

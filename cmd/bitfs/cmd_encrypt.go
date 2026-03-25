@@ -22,10 +22,30 @@ func runEncrypt(args []string) int {
 	password := fs.String("password", "", "wallet password (for testing)")
 	network := addNetworkFlag(fs)
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `bitfs encrypt — Encrypt content (free -> private) in a BitFS vault
+
+Usage:
+  bitfs encrypt [options] <remote-path>
+
+Options:
+`)
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs encrypt <remote-path> [--vault N]\n")

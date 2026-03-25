@@ -57,11 +57,22 @@ func maybeWarnLegacyDataDirMigration(network, selectedDataDir string) {
 		return
 	}
 
-	if _, err := os.Stat(legacyMainnetDir); err != nil {
+	// Only warn if legacy dir contains a config file with a mismatched network,
+	// indicating data that may need migration. Don't warn just because the
+	// mainnet dir exists — that's the normal state when using multiple networks.
+	legacyCfgPath := filepath.Join(legacyMainnetDir, "config")
+	cfgData, err := os.ReadFile(legacyCfgPath)
+	if err != nil {
+		return // no config = no evidence of migration need
+	}
+	// If the legacy config explicitly names this network, the user may have
+	// previously used the mainnet dir for testnet/regtest data.
+	if !strings.Contains(string(cfgData), "network="+net) {
 		return
 	}
+
 	if _, err := os.Stat(selectedClean); err == nil {
-		return
+		return // target dir already exists
 	}
 
 	key := net + ":" + selectedClean
@@ -69,8 +80,7 @@ func maybeWarnLegacyDataDirMigration(network, selectedDataDir string) {
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "Notice: found legacy data directory %s while using %s.\n", legacyMainnetDir, net)
+	fmt.Fprintf(os.Stderr, "Notice: found %s data in %s.\n", net, legacyMainnetDir)
 	fmt.Fprintf(os.Stderr, "Default %s directory is now %s.\n", net, selectedClean)
-	fmt.Fprintf(os.Stderr, "If needed, migrate manually: cp -R %s %s\n", legacyMainnetDir, selectedClean)
-	fmt.Fprintf(os.Stderr, "Then verify permissions and rollback plan before switching production usage.\n")
+	fmt.Fprintf(os.Stderr, "Migrate manually: cp -R %s %s\n", legacyMainnetDir, selectedClean)
 }

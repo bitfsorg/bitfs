@@ -156,7 +156,9 @@ func runDaemonStop(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	pidPath := filepath.Join(*dataDir, "daemon.pid")
 	pidData, err := os.ReadFile(pidPath)

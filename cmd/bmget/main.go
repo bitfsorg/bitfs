@@ -296,7 +296,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(w io.Writer) {
-	banner.PrintTo(w, "0.1.0")
+	banner.PrintTo(w, "0.0.1")
 	fmt.Fprintf(w, `bmget - Download a directory recursively from a BitFS filesystem
 
 Usage:

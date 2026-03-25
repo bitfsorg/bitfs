@@ -41,6 +41,16 @@ func TestUserMessage(t *testing.T) {
 			err:      errors.New("wallet: seed decryption failed (wrong password or corrupted data)"),
 			expected: "wallet: seed decryption failed (wrong password or corrupted data)",
 		},
+		{
+			name:     "deep network error chain",
+			err:      errors.New("network: get tx status: woc: get tx status: network: transaction not found: /tx/abc123"),
+			expected: "transaction not found: abc123",
+		},
+		{
+			name:     "network error generic",
+			err:      errors.New("network: get headers: network: connection refused"),
+			expected: "connection refused",
+		},
 	}
 
 	for _, tt := range tests {

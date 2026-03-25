@@ -26,10 +26,30 @@ func runVerify(args []string) int {
 	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	netName := fs.String("network", "", "network name override (auto-detected from wallet config)")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `bitfs verify — SPV-verify a transaction
+
+Usage:
+  bitfs verify [options] <txid>
+
+Options:
+`)
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, netName, dataDir)
+	if !resolveNetworkDataDir(fs, netName, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs verify [options] <txid>\n\n")

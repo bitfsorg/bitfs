@@ -26,8 +26,8 @@ func TestApplyNetworkDefaultDataDir_WhenDatadirNotSet(t *testing.T) {
 	}
 
 	applyNetworkDefaultDataDir(fs, dataDir, "regtest")
-	if !strings.HasSuffix(*dataDir, ".regtest") {
-		t.Fatalf("datadir = %q, want suffix %q", *dataDir, ".regtest")
+	if !strings.HasSuffix(*dataDir, ".bitfs-regtest") {
+		t.Fatalf("datadir = %q, want suffix %q", *dataDir, ".bitfs-regtest")
 	}
 }
 

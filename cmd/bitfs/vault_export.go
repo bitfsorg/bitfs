@@ -25,7 +25,9 @@ func runVaultExport(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault export <name> [--format wif|hex|seed-path] [--yes]\n")
@@ -33,6 +35,21 @@ func runVaultExport(args []string) int {
 	}
 
 	vaultName := fs.Arg(0)
+
+	// Load wallet first to verify vault exists before showing warning.
+	pass, err := resolvePassword(*password)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
+		return exitWalletError
+	}
+
+	eng := engine.New(*dataDir, pass)
+
+	// Pre-check: verify the vault exists before prompting (use wif to avoid format errors).
+	if _, checkErr := eng.VaultExport(vaultName, "wif"); checkErr != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(checkErr))
+		return exitNotFound
+	}
 
 	// For wif/hex formats, warn about private key exposure.
 	if *format == "wif" || *format == "hex" {
@@ -50,13 +67,6 @@ func runVaultExport(args []string) int {
 		}
 	}
 
-	pass, err := resolvePassword(*password)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
-		return exitWalletError
-	}
-
-	eng := engine.New(*dataDir, pass)
 	result, err := eng.VaultExport(vaultName, *format)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))

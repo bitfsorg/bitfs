@@ -516,10 +516,30 @@ func runShell(args []string) int {
 	password := fs.String("password", "", "wallet password (for testing)")
 	network := addNetworkFlag(fs)
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `bitfs shell — Interactive FTP-style REPL for a BitFS vault
+
+Usage:
+  bitfs shell [options]
+
+Options:
+`)
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
@@ -640,6 +660,10 @@ func shellHelp() {
 func shellLs(eng *vault.Vault, dir string) {
 	node := eng.State.FindNodeByPath(dir)
 	if node == nil {
+		if dir == "/" || dir == "" {
+			fmt.Println("(empty)")
+			return
+		}
 		fmt.Printf("Not found: %s\n", dir)
 		return
 	}

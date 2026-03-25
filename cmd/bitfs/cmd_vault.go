@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bitfsorg/libbitfs-go/config"
 )
@@ -59,14 +60,24 @@ func runVaultCreate(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault create <name>\n")
 		return exitUsageError
 	}
 
-	name := fs.Arg(0)
+	name := strings.TrimSpace(fs.Arg(0))
+	if name == "" {
+		fmt.Fprintf(os.Stderr, "Error: vault name cannot be empty\n")
+		return exitUsageError
+	}
+	if len(name) > 64 {
+		fmt.Fprintf(os.Stderr, "Error: vault name too long (max 64 characters)\n")
+		return exitUsageError
+	}
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
@@ -110,7 +121,9 @@ func runVaultList(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
@@ -149,7 +162,9 @@ func runVaultRename(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault rename <old-name> <new-name>\n")
@@ -157,7 +172,15 @@ func runVaultRename(args []string) int {
 	}
 
 	oldName := fs.Arg(0)
-	newName := fs.Arg(1)
+	newName := strings.TrimSpace(fs.Arg(1))
+	if newName == "" {
+		fmt.Fprintf(os.Stderr, "Error: vault name cannot be empty\n")
+		return exitUsageError
+	}
+	if len(newName) > 64 {
+		fmt.Fprintf(os.Stderr, "Error: vault name too long (max 64 characters)\n")
+		return exitUsageError
+	}
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
@@ -191,7 +214,9 @@ func runVaultDelete(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
-	resolveNetworkDataDir(fs, network, dataDir)
+	if !resolveNetworkDataDir(fs, network, dataDir) {
+		return exitUsageError
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: bitfs vault delete [--force] <name>\n")

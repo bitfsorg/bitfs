@@ -4,7 +4,18 @@
 
 package main
 
-import "flag"
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+// validNetworks lists the accepted --network values.
+var validNetworks = map[string]bool{
+	"mainnet": true,
+	"testnet": true,
+	"regtest": true,
+}
 
 // addNetworkFlag adds --network to a FlagSet and returns the pointer.
 // After fs.Parse(), call resolveNetworkDataDir(fs, network, dataDir).
@@ -13,9 +24,16 @@ func addNetworkFlag(fs *flag.FlagSet) *string {
 }
 
 // resolveNetworkDataDir applies --network to --datadir when datadir was not
-// explicitly set. Call after fs.Parse().
-func resolveNetworkDataDir(fs *flag.FlagSet, network *string, dataDir *string) {
-	if *network != "" {
-		applyNetworkDefaultDataDir(fs, dataDir, *network)
+// explicitly set. Returns false if the network name is invalid.
+// Call after fs.Parse().
+func resolveNetworkDataDir(fs *flag.FlagSet, network *string, dataDir *string) bool {
+	if *network == "" {
+		return true
 	}
+	if !validNetworks[*network] {
+		fmt.Fprintf(os.Stderr, "Error: unknown network %q (must be mainnet, testnet, or regtest)\n", *network)
+		return false
+	}
+	applyNetworkDefaultDataDir(fs, dataDir, *network)
+	return true
 }
