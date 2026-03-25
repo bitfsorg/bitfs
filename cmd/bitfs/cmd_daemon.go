@@ -58,6 +58,18 @@ func runDaemonStart(args []string) int {
 	arcURL := fs.String("arc-url", "", "ARC endpoint URL override")
 	netName := fs.String("network", "regtest", "network name (regtest, testnet, mainnet)")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, "bitfs daemon start — Start the BitFS daemon\n\nUsage:\n  bitfs daemon start [options]\n\nOptions:\n")
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}
@@ -152,6 +164,18 @@ func runDaemonStop(args []string) int {
 	fs := flag.NewFlagSet("daemon stop", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	network := addNetworkFlag(fs)
+
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, "bitfs daemon stop — Stop the BitFS daemon\n\nUsage:\n  bitfs daemon stop [options]\n\nOptions:\n")
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError

@@ -592,7 +592,12 @@ Options:
 	defer func() { _ = rl.Close() }()
 	ensureHistoryFilePermissions(historyFile)
 
-	_, _ = fmt.Fprintf(rl.Stdout(), "BitFS Shell (vault %d). Type 'help' for commands, 'quit' to exit.\n", vaultIdx)
+	// Show vault name in welcome message (use flag value or "default").
+	vaultDisplayName := *vaultName
+	if vaultDisplayName == "" {
+		vaultDisplayName = "default"
+	}
+	_, _ = fmt.Fprintf(rl.Stdout(), "BitFS Shell (vault: %s). Type 'help' for commands, 'quit' to exit.\n", vaultDisplayName)
 
 	ctx := &shellCtx{eng: eng, vaultIdx: vaultIdx, cwd: cwd, localCwd: localCwd, daemonURL: daemonURL}
 

@@ -61,6 +61,18 @@ func runWalletInit(args []string) int {
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing; normally prompted)")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, "bitfs wallet init — Initialize a new HD wallet\n\nUsage:\n  bitfs wallet init [options]\n\nOptions:\n")
+			fs.SetOutput(os.Stderr)
+			fs.PrintDefaults()
+			return exitSuccess
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return exitUsageError
 	}

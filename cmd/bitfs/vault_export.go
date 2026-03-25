@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 
+	"golang.org/x/term"
+
 	"github.com/bitfsorg/bitfs/internal/engine"
 	"github.com/bitfsorg/libbitfs-go/config"
 )
@@ -54,6 +56,10 @@ func runVaultExport(args []string) int {
 	// For wif/hex formats, warn about private key exposure.
 	if *format == "wif" || *format == "hex" {
 		if !*yes {
+			if !term.IsTerminal(int(os.Stdin.Fd())) {
+				fmt.Fprintf(os.Stderr, "Error: refusing to export private key in non-interactive mode; use --yes to confirm\n")
+				return exitUsageError
+			}
 			fmt.Fprintf(os.Stderr, "WARNING: This will display the vault root PRIVATE KEY.\n")
 			fmt.Fprintf(os.Stderr, "Anyone with this key can control all files in vault %q.\n", vaultName)
 			fmt.Fprintf(os.Stderr, "Continue? [y/N] ")
