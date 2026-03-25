@@ -107,7 +107,7 @@ func runWalletInit(args []string) int {
 	walletPath := filepath.Join(*dataDir, "wallet.enc")
 	if _, err := os.Stat(walletPath); err == nil {
 		fmt.Fprintf(os.Stderr, "Error: wallet already exists at %s\n", walletPath)
-		fmt.Fprintf(os.Stderr, "Remove %s to reinitialize.\n", *dataDir)
+		fmt.Fprintf(os.Stderr, "Back up your mnemonic, then remove %s to reinitialize.\n", *dataDir)
 		return exitWalletError
 	}
 

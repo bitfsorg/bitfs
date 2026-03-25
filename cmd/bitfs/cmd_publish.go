@@ -31,13 +31,13 @@ func runPublish(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	v, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = v.Close() }()
@@ -48,7 +48,7 @@ func runPublish(args []string) int {
 	if fs.NArg() < 1 {
 		result, err := publish.Publish(v, dns, &publish.PublishOpts{})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			return exitError
 		}
 		fmt.Println(result.Message)
@@ -59,7 +59,7 @@ func runPublish(args []string) int {
 
 	vaultIdx, err := v.ResolveVaultIndex(*vaultName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
 
@@ -68,7 +68,7 @@ func runPublish(args []string) int {
 		Domain:     domain,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitError
 	}
 

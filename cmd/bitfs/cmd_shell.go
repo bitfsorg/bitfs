@@ -129,7 +129,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 		path := resolvePath(ctx.cwd, args[0])
 		result, mkErr := ctx.eng.Mkdir(&vault.MkdirOpts{VaultIndex: ctx.vaultIdx, Path: path})
 		if mkErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", mkErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(mkErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -154,7 +154,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Access:     access,
 		})
 		if putErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", putErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(putErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -181,12 +181,12 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 		rmPath := resolvePath(ctx.cwd, pathArgs[0])
 		if recursive {
 			if err := shellRemoveRecursive(ctx.eng, ctx.vaultIdx, rmPath); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			}
 		} else {
 			result, rmErr := ctx.eng.Remove(&vault.RemoveOpts{VaultIndex: ctx.vaultIdx, Path: rmPath})
 			if rmErr != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", rmErr)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(rmErr))
 			} else {
 				fmt.Println(result.Message)
 			}
@@ -222,7 +222,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Force:      true,
 		})
 		if mvErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", mvErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(mvErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -237,7 +237,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			DstPath:    resolvePath(ctx.cwd, args[1]),
 		})
 		if cpErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", cpErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(cpErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -266,7 +266,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Soft:       soft,
 		})
 		if lnErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", lnErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(lnErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -296,7 +296,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 		sellPath := resolvePath(ctx.cwd, cleanArgs[0])
 		if recursive {
 			if err := shellSellRecursive(ctx.eng, ctx.vaultIdx, sellPath, price); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			}
 		} else {
 			result, sellErr := ctx.eng.Sell(&vault.SellOpts{
@@ -305,7 +305,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 				PricePerKB: price,
 			})
 			if sellErr != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", sellErr)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(sellErr))
 			} else {
 				fmt.Println(result.Message)
 			}
@@ -322,7 +322,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 		})
 		switch {
 		case catErr != nil:
-			fmt.Fprintf(os.Stderr, "Error: %v\n", catErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(catErr))
 		case !force && !isTextMime(info.MimeType):
 			fmt.Fprintf(os.Stderr, "Binary file (%s, %d bytes). Use 'cat <path> --force' or 'get' to download.\n", info.MimeType, info.FileSize)
 		default:
@@ -350,7 +350,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			LocalPath:  localPath,
 		})
 		if getErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", getErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(getErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -369,7 +369,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 		}
 		mgResult, mgetErr := doMget(ctx.eng, ctx.vaultIdx, remotePath, localDir)
 		if mgetErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", mgetErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(mgetErr))
 		} else {
 			fmt.Printf("Downloaded %d files, created %d directories\n",
 				mgResult.FilesDownloaded, mgResult.DirsCreated)
@@ -395,12 +395,12 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			access = args[2]
 		}
 		if err := validateAccessMode(access); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			return shellContinue
 		}
 		mpResult, mputErr := doMput(ctx.eng, ctx.vaultIdx, localDir, remoteDir, access)
 		if mputErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", mputErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(mputErr))
 		} else {
 			fmt.Printf("Uploaded %d files, created %d directories\n",
 				mpResult.FilesUploaded, mpResult.DirsCreated)
@@ -431,7 +431,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 				Domain:     domain,
 			})
 			if pubErr != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", pubErr)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(pubErr))
 			} else {
 				fmt.Println(result.Message)
 			}
@@ -446,7 +446,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Domain: domain,
 		})
 		if unpubErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", unpubErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(unpubErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -460,7 +460,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Path:       resolvePath(ctx.cwd, args[0]),
 		})
 		if encErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", encErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(encErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -473,7 +473,7 @@ func shellExecCmd(ctx *shellCtx, cmd string, args []string) shellAction {
 			Path: resolvePath(ctx.cwd, args[0]),
 		})
 		if decErr != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", decErr)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(decErr))
 		} else {
 			fmt.Println(result.Message)
 		}
@@ -523,20 +523,20 @@ func runShell(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
 
@@ -586,7 +586,7 @@ func runShell(args []string) int {
 			return exitSuccess
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			return exitError
 		}
 

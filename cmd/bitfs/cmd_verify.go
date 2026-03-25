@@ -43,13 +43,13 @@ func runVerify(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -66,7 +66,7 @@ func runVerify(args []string) int {
 
 	configureChain(eng, *rpcURL, *rpcUser, *rpcPass, network, *arcURL)
 	if err := eng.InitSPV(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNetError
 	}
 
@@ -77,7 +77,7 @@ func runVerify(args []string) int {
 
 	result, err := eng.VerifyTx(context.Background(), txid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNetError
 	}
 

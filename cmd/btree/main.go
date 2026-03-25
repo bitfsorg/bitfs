@@ -37,19 +37,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 	noCache := fs.Bool("no-cache", false, "skip metadata cache")
 	offline := fs.Bool("offline", false, "cache-only mode")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			printUsage(stdout)
+			return 0
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
-		banner.Print("0.1.0")
-		fmt.Fprintf(stderr, `Usage: btree [--json] [-d|--depth N] [--host URL] [--timeout DURATION] <bitfs-uri>
-
-Examples:
-  btree bitfs://example.com/                  (domain)
-  btree bitfs://alice@example.com/            (paymail)
-  btree bitfs://02abc...66chars.../           (pubkey, requires --host)
-`)
+		printUsage(stderr)
 		return buy.ExitUsageError
 	}
 
@@ -134,6 +137,27 @@ Examples:
 	}
 	fmt.Fprintf(stdout, "\n%d %s, %d %s\n", dirs, dirWord, files, fileWord)
 	return 0
+}
+
+func printUsage(w io.Writer) {
+	banner.PrintTo(w, "0.1.0")
+	fmt.Fprintf(w, `btree - Show directory tree from a BitFS filesystem
+
+Usage:
+  btree [options] <bitfs-uri>
+
+Options:
+  --depth, -d N  Max depth (0 = unlimited)
+  --json         JSON output
+  --host URL     Daemon URL override
+  --timeout D    Request timeout (e.g. 10s, 1m)
+  --no-cache     Skip metadata cache
+  --offline      Cache-only mode
+
+Examples:
+  btree bitfs://example.com/docs/
+  btree -d 2 bitfs://alice@example.com/
+`)
 }
 
 // treeNode represents a node in the tree structure used for both

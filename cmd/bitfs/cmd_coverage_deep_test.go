@@ -1254,7 +1254,7 @@ func TestRunVaultDelete_Success(t *testing.T) {
 	dataDir := initTestWallet(t)
 	// Create a vault to delete.
 	runVaultCreate([]string{"--datadir", dataDir, "--password", "testpass", "deleteme"})
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "deleteme"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "--force", "deleteme"})
 	if code != exitSuccess {
 		t.Errorf("vault delete = %d, want %d", code, exitSuccess)
 	}
@@ -1262,7 +1262,7 @@ func TestRunVaultDelete_Success(t *testing.T) {
 
 func TestRunVaultDelete_NotFound(t *testing.T) {
 	dataDir := initTestWallet(t)
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "nope"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "--force", "nope"})
 	if code != exitNotFound {
 		t.Errorf("vault delete (not found) = %d, want %d", code, exitNotFound)
 	}
@@ -2018,7 +2018,7 @@ func TestRunVaultRename_BadPassword(t *testing.T) {
 
 func TestRunVaultDelete_BadPassword(t *testing.T) {
 	dataDir := initTestWallet(t)
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "wrong", "v1"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "wrong", "--force", "v1"})
 	if code != exitWalletError {
 		t.Errorf("vault delete (bad pass) = %d, want %d", code, exitWalletError)
 	}

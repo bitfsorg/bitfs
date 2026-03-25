@@ -37,6 +37,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 	noCache := fs.Bool("no-cache", false, "skip metadata cache")
 	offline := fs.Bool("offline", false, "cache-only mode")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			printUsage(stdout)
+			return 0
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return buy.ExitUsageError
 	}
@@ -47,14 +57,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if fs.NArg() < 1 {
-		banner.Print("0.1.0")
-		fmt.Fprintf(stderr, `Usage: bls [--json] [--long|-l] [--host URL] [--timeout DURATION] <bitfs-uri>
-
-Examples:
-  bls bitfs://example.com/docs/                (domain)
-  bls bitfs://alice@example.com/docs/          (paymail)
-  bls bitfs://02abc...66chars.../docs/         (pubkey, requires --host)
-`)
+		printUsage(stderr)
 		return buy.ExitUsageError
 	}
 
@@ -105,6 +108,28 @@ Examples:
 		return outputLong(meta, stdout)
 	}
 	return outputDefault(meta, stdout)
+}
+
+func printUsage(w io.Writer) {
+	banner.PrintTo(w, "0.1.0")
+	fmt.Fprintf(w, `bls - List directory contents in a BitFS filesystem
+
+Usage:
+  bls [options] <bitfs-uri>
+
+Options:
+  --json         JSON output
+  --long, -l     Detailed listing (type, access, size, name)
+  --host URL     Daemon URL override
+  --timeout D    Request timeout (e.g. 10s, 1m)
+  --keyword S    Filter children by name substring
+  --no-cache     Skip metadata cache
+  --offline      Cache-only mode
+
+Examples:
+  bls bitfs://example.com/docs/
+  bls bitfs://alice@example.com/docs/
+`)
 }
 
 // outputDefault prints one name per line, with trailing "/" for directories.

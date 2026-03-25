@@ -38,7 +38,7 @@ func main() {
 func run(args []string) int {
 	if len(args) == 0 {
 		printUsage()
-		return exitUsageError
+		return exitSuccess
 	}
 
 	cmd := args[0]

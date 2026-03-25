@@ -41,13 +41,13 @@ func runWalletFund(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -163,22 +163,20 @@ func formatSats(n uint64) string {
 func printFundingInstructions(netName, address string) {
 	switch netName {
 	case "regtest":
-		fmt.Println("Regtest — mine blocks to fund this address:")
+		fmt.Println("Regtest — fund this address from your local regtest node:")
 		fmt.Println()
-		fmt.Println("  1. Start regtest node (if not running):")
-		fmt.Println("     make regtest")
+		fmt.Println("  Send regtest BSV using bitcoin-cli:")
+		fmt.Printf("     bitcoin-cli -regtest sendtoaddress %s <amount>\n", address)
 		fmt.Println()
-		fmt.Println("  2. Mine 101 blocks (first 100 must mature):")
-		fmt.Printf("     docker exec bitfs-regtest bitcoin-cli -regtest -rpcuser=bitfs -rpcpassword=bitfs generatetoaddress 101 %s\n", address)
+		fmt.Println("  Or mine blocks directly to this address:")
+		fmt.Printf("     bitcoin-cli -regtest generatetoaddress 101 %s\n", address)
 
 	case "testnet":
-		fmt.Println("Testnet — send tBSV from your own funding source:")
+		fmt.Println("Testnet — send tBSV to this address:")
 		fmt.Println()
-		fmt.Println("  1. Start testnet node (if not running):")
-		fmt.Println("     make testnet")
-		fmt.Println()
-		fmt.Println("  2. Send tBSV to this address:")
 		fmt.Printf("     %s\n", address)
+		fmt.Println()
+		fmt.Println("  Get testnet BSV from a faucet or your own testnet node.")
 		fmt.Println()
 		fmt.Println("Scan QR code to send testnet BSV:")
 		fmt.Println()

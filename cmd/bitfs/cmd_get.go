@@ -39,20 +39,20 @@ func runGet(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
 
 	vaultIdx, err := eng.ResolveVaultIndex(*vaultName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
 
@@ -64,7 +64,7 @@ func runGet(args []string) int {
 		LocalPath:  localPath,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitError
 	}
 

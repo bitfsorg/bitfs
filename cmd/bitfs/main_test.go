@@ -37,8 +37,8 @@ func TestRunHelpAlias(t *testing.T) {
 
 func TestRunNoArgs(t *testing.T) {
 	code := run(nil)
-	if code != exitUsageError {
-		t.Errorf("run (no args) returned %d, want %d", code, exitUsageError)
+	if code != exitSuccess {
+		t.Errorf("run (no args) returned %d, want %d", code, exitSuccess)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestVaultRenameNoArgs(t *testing.T) {
 func TestVaultDelete(t *testing.T) {
 	dataDir := initTestWallet(t)
 
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "default"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "--force", "default"})
 	if code != exitSuccess {
 		t.Errorf("runVaultDelete returned %d, want %d", code, exitSuccess)
 	}
@@ -211,7 +211,7 @@ func TestVaultDelete(t *testing.T) {
 func TestVaultDeleteNotFound(t *testing.T) {
 	dataDir := initTestWallet(t)
 
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "nonexistent"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "--force", "nonexistent"})
 	if code != exitNotFound {
 		t.Errorf("delete nonexistent vault returned %d, want %d", code, exitNotFound)
 	}

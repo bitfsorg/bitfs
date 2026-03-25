@@ -50,21 +50,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 	noCache := fs.Bool("no-cache", false, "skip metadata cache")
 	offline := fs.Bool("offline", false, "cache-only mode")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			printUsage(stdout)
+			return 0
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
-		banner.Print("0.1.0")
-		fmt.Fprintf(stderr, `Usage: bmget [--json] [--buy] [--concurrency N] [--fail-fast] [--host URL] <bitfs-uri> [local-dir]
-
-Batch-download all files from a BitFS directory.
-
-Examples:
-  bmget bitfs://example.com/docs/                  (download to ./docs/)
-  bmget --buy --wallet-key KEY bitfs://alice@example.com/data/ ./out/
-  bmget --json --concurrency 8 bitfs://02abc.../dir/ --host http://localhost:8080
-`)
+		printUsage(stderr)
 		return buy.ExitUsageError
 	}
 
@@ -292,6 +293,32 @@ Examples:
 		return 1
 	}
 	return 0
+}
+
+func printUsage(w io.Writer) {
+	banner.PrintTo(w, "0.1.0")
+	fmt.Fprintf(w, `bmget - Download a directory recursively from a BitFS filesystem
+
+Usage:
+  bmget [options] <bitfs-uri> [local-dir]
+
+Options:
+  --concurrency N    Max concurrent downloads (default: 4)
+  --fail-fast        Stop on first error
+  --json             JSON output
+  --buy              Attempt to purchase paid content
+  --wallet-key KEY   Buyer private key (hex, @filepath, or BITFS_WALLET_KEY env)
+  --utxo UTXO        Manual UTXO for purchase (txid:vout:amount)
+  --fee-rate RATE    Buyer HTLC fee rate override in sat/KB
+  --host URL         Daemon URL override
+  --timeout D        Request timeout (e.g. 10s, 1m)
+  --no-cache         Skip metadata cache
+  --offline          Cache-only mode
+
+Examples:
+  bmget bitfs://example.com/docs/ ./local-docs/
+  bmget --buy --concurrency 8 bitfs://alice@example.com/data/ ./out/
+`)
 }
 
 // downloadFile downloads a single file from the daemon, decrypting it with

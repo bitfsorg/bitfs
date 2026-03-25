@@ -68,14 +68,14 @@ func runPaymailBind(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng := engine.New(*dataDir, pass)
 	pubHex, err := eng.PaymailBind(alias, vaultName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		switch {
 		case errors.Is(err, wallet.ErrVaultNotFound):
 			return exitNotFound
@@ -114,14 +114,14 @@ func runPaymailUnbind(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng := engine.New(*dataDir, pass)
 	vaultName, err := eng.PaymailUnbind(alias)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		if errors.Is(err, wallet.ErrAliasNotFound) {
 			return exitNotFound
 		}
@@ -154,14 +154,14 @@ func runPaymailList(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng := engine.New(*dataDir, pass)
 	entriesRaw, err := eng.PaymailList()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	if len(entriesRaw) == 0 {
@@ -185,7 +185,7 @@ func runPaymailList(args []string) int {
 	if *jsonOut {
 		data, err := json.MarshalIndent(entries, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 			return exitError
 		}
 		fmt.Println(string(data))

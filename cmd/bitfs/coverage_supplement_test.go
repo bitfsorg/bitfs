@@ -152,7 +152,7 @@ func TestResolveVaultIndex_NamedVaultAfterCreate(t *testing.T) {
 func TestVaultList_AfterDeleteAll(t *testing.T) {
 	dataDir := initTestWallet(t) // creates "default"
 	// Delete the default vault.
-	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "default"})
+	code := runVaultDelete([]string{"--datadir", dataDir, "--password", "testpass", "--force", "default"})
 	if code != exitSuccess {
 		t.Fatalf("vault delete returned %d", code)
 	}

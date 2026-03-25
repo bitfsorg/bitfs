@@ -15,7 +15,7 @@ import (
 // printError writes an error to stderr. If the error wraps
 // vault.ErrInsufficientFunds, it appends BSV purchase guidance.
 func printError(err error) {
-	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 	if errors.Is(err, vault.ErrInsufficientFunds) {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "To add funds, run 'bitfs wallet fund' and send BSV to the displayed address.")

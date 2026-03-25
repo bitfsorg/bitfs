@@ -49,19 +49,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 	noCache := fs.Bool("no-cache", false, "skip metadata cache")
 	offline := fs.Bool("offline", false, "cache-only mode")
 
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			printUsage(stdout)
+			return 0
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	if err := fs.Parse(args); err != nil {
 		return buy.ExitUsageError
 	}
 
 	if fs.NArg() < 1 {
-		banner.Print("0.1.0")
-		fmt.Fprintf(stderr, `Usage: bget [-o FILE] [--buy] [--host URL] [--timeout DURATION] <bitfs-uri>
-
-Examples:
-  bget bitfs://example.com/docs/report.pdf            (domain)
-  bget bitfs://alice@example.com/docs/report.pdf      (paymail)
-  bget bitfs://02abc...66chars.../docs/report.pdf     (pubkey, requires --host)
-`)
+		printUsage(stderr)
 		return buy.ExitUsageError
 	}
 
@@ -172,6 +175,33 @@ Examples:
 		fmt.Fprintf(stderr, "bget: unknown access mode %q\n", meta.Access)
 		return 1
 	}
+}
+
+func printUsage(w io.Writer) {
+	banner.PrintTo(w, "0.1.0")
+	fmt.Fprintf(w, `bget - Download a file from a BitFS filesystem
+
+Usage:
+  bget [options] <bitfs-uri>
+
+Options:
+  --output, -o FILE  Output filename
+  --json             JSON output
+  --buy              Attempt to purchase paid content
+  --wallet-key KEY   Buyer private key (hex, @filepath, or BITFS_WALLET_KEY env)
+  --utxo UTXO        Manual UTXO for purchase (txid:vout:amount)
+  --fee-rate RATE    Buyer HTLC fee rate override in sat/KB
+  --verify           SPV-verify the Metanet tx before downloading
+  --version N        Download a specific version (1=latest, 2=previous, ...)
+  --host URL         Daemon URL override
+  --timeout D        Request timeout (e.g. 10s, 1m)
+  --no-cache         Skip metadata cache
+  --offline          Cache-only mode
+
+Examples:
+  bget bitfs://example.com/docs/readme.txt
+  bget -o report.pdf bitfs://alice@example.com/docs/report.pdf
+`)
 }
 
 // downloadContent fetches encrypted data by key_hash, decrypts it using Method 42

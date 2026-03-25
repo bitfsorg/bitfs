@@ -64,13 +64,13 @@ func runDaemonStart(args []string) int {
 
 	pass, err := resolvePassword(*password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	eng, err := vault.New(*dataDir, pass)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 	defer func() { _ = eng.Close() }()
@@ -91,7 +91,7 @@ func runDaemonStart(args []string) int {
 	walletAdapter := newVaultWalletAdapter(eng)
 	d, err := daemon.New(cfg, walletAdapter, newVaultStoreAdapter(eng), newVaultMetanetAdapter(eng))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitError
 	}
 	// Enable invoice persistence by default for crash recovery and payment-state continuity.
@@ -119,7 +119,7 @@ func runDaemonStart(args []string) int {
 	}
 
 	if err := d.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitError
 	}
 

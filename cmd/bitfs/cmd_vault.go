@@ -70,13 +70,13 @@ func runVaultCreate(args []string) int {
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	vault, err := w.CreateVault(state, name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitConflict
 	}
 
@@ -114,7 +114,7 @@ func runVaultList(args []string) int {
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
@@ -161,12 +161,12 @@ func runVaultRename(args []string) int {
 
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	if err := w.RenameVault(state, oldName, newName); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
 
@@ -185,6 +185,7 @@ func runVaultDelete(args []string) int {
 	fs := flag.NewFlagSet("vault delete", flag.ContinueOnError)
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
+	force := fs.Bool("force", false, "skip confirmation prompt")
 	network := addNetworkFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
@@ -193,20 +194,27 @@ func runVaultDelete(args []string) int {
 	resolveNetworkDataDir(fs, network, dataDir)
 
 	if fs.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: bitfs vault delete <name>\n")
+		fmt.Fprintf(os.Stderr, "Usage: bitfs vault delete [--force] <name>\n")
 		return exitUsageError
 	}
 
 	name := fs.Arg(0)
 
+	if !*force {
+		if !promptYesNo(fmt.Sprintf("Delete vault %q? This cannot be undone", name)) {
+			fmt.Println("Aborted.")
+			return exitSuccess
+		}
+	}
+
 	w, state, err := loadWalletFromDataDir(*dataDir, *password)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitWalletError
 	}
 
 	if err := w.DeleteVault(state, name); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage(err))
 		return exitNotFound
 	}
 
