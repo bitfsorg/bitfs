@@ -257,7 +257,6 @@ func TestDefaultConfig(t *testing.T) {
 	assert.False(t, c.TLS.Enabled)
 	assert.Equal(t, 60, c.Security.RateLimit.RPM)
 	assert.Equal(t, 20, c.Security.RateLimit.Burst)
-	assert.Equal(t, "info", c.Log.Level)
 }
 
 // --- Health Endpoint Tests ---
@@ -746,6 +745,27 @@ func TestCreateSession(t *testing.T) {
 	assert.Equal(t, seller, session.SellerPub)
 	assert.NotEmpty(t, session.SessionKey)
 	assert.False(t, session.IsExpired())
+
+	// Domain separation: session ID must NOT leak SessionKey bits.
+	assert.NotEqual(t, hex.EncodeToString(session.SessionKey[:16]), session.ID,
+		"session ID must not be derived from the session key")
+}
+
+func TestCreateSession_IDIndependentOfKey(t *testing.T) {
+	// Two sessions with identical handshake inputs derive the same SessionKey
+	// but must still get distinct random session IDs.
+	d, _, _, _ := newTestDaemon(t)
+	buyer := make([]byte, 33)
+	seller := make([]byte, 33)
+	sharedX := make([]byte, 32)
+	nonceB := make([]byte, 32)
+	nonceS := make([]byte, 32)
+
+	s1 := d.CreateSession(buyer, seller, sharedX, nonceB, nonceS, time.Hour)
+	s2 := d.CreateSession(buyer, seller, sharedX, nonceB, nonceS, time.Hour)
+
+	assert.Equal(t, s1.SessionKey, s2.SessionKey, "same inputs derive same key")
+	assert.NotEqual(t, s1.ID, s2.ID, "session IDs must be independent random values")
 }
 
 func TestGetSession_Found(t *testing.T) {
@@ -1822,8 +1842,13 @@ func TestDaemon_PersistsInvoiceOnPayment(t *testing.T) {
 	loaded, err := d.loadInvoice("test-inv-123")
 	require.NoError(t, err)
 	assert.True(t, loaded.Paid)
-	assert.Equal(t, inv.Capsule, loaded.Capsule)
+	assert.Empty(t, loaded.Capsule, "capsule is key material and must never be written to disk")
 	assert.Equal(t, "test-inv-123", loaded.ID)
+
+	// Verify the raw JSON on disk contains no capsule field at all.
+	raw, err := os.ReadFile(filepath.Join(dir, "test-inv-123.json"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), `"capsule":`, "persisted invoice JSON must not contain a capsule field")
 }
 
 func TestDaemon_RecoversPaidInvoicesOnStart(t *testing.T) {
@@ -1851,7 +1876,7 @@ func TestDaemon_RecoversPaidInvoicesOnStart(t *testing.T) {
 	loaded, ok := d.invoices["recovered-inv"]
 	require.True(t, ok, "persisted invoice should be recovered")
 	assert.True(t, loaded.Paid)
-	assert.Equal(t, []byte("recovery-capsule"), loaded.Capsule)
+	assert.Empty(t, loaded.Capsule, "capsule must not survive a restart via disk")
 }
 
 func TestDaemon_PersistInvoice_DisabledWhenNoDirSet(t *testing.T) {

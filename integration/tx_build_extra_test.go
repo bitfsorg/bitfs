@@ -115,14 +115,17 @@ func copyHashes(src [][]byte) [][]byte {
 	return dst
 }
 
-// makeTxHashes generates n deterministic 32-byte hashes.
+// makeTxHashes generates n deterministic, pairwise-distinct 32-byte hashes.
 func makeTxHashes(n int) [][]byte {
+	// Hash each index so all leaves are genuinely distinct. The previous
+	// pattern byte(i*32+j) wrapped mod 256 at i>=8, duplicating leaves 0-7
+	// as leaves 8-15 — which the SPV duplicate-subtree defense
+	// (CVE-2012-2459) now correctly rejects.
 	hashes := make([][]byte, n)
 	for i := range hashes {
+		h := sha256.Sum256([]byte{'t', 'x', byte(i), byte(i >> 8)})
 		hashes[i] = make([]byte, 32)
-		for j := range hashes[i] {
-			hashes[i][j] = byte(i*32 + j)
-		}
+		copy(hashes[i], h[:])
 	}
 	return hashes
 }

@@ -55,7 +55,7 @@ type InvoiceRecord struct {
 	SellerPubKey string    `json:"seller_pubkey"` // Hex-encoded compressed seller pubkey (for HTLC 2-of-2 multisig)
 	CapsuleHash  string    `json:"capsule_hash"`
 	HTLCScript   []byte    `json:"-"`                       // Precomputed HTLC script for verification
-	Capsule      []byte    `json:"capsule,omitempty"`       // ECDH capsule for buyer (persisted for crash recovery)
+	Capsule      []byte    `json:"-"`                       // ECDH capsule for buyer — in-memory only, never persisted (key material). Crash recovery never re-serves it: recovered invoices also lack NodePNode/KeyHash/FileTxID/HTLCScript, and no endpoint returns a capsule for a recovered invoice.
 	CapsuleNonce []byte    `json:"capsule_nonce,omitempty"` // Per-invoice nonce for capsule unlinkability
 	Expiry       time.Time `json:"expiry"`
 	Paid         bool      `json:"paid"`

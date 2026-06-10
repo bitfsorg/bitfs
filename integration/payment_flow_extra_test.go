@@ -439,7 +439,6 @@ func TestDaemonConfigDefaults(t *testing.T) {
 	assert.Greater(t, config.Security.RateLimit.RPM, 0, "rate limit RPM should be positive")
 	assert.Greater(t, config.Security.RateLimit.Burst, 0, "rate limit burst should be positive")
 	assert.NotEmpty(t, config.Storage.DataDir, "storage data dir should not be empty")
-	assert.NotEmpty(t, config.Log.Level, "log level should not be empty")
 }
 
 // TestDaemonNewNilConfig verifies daemon.New with nil config returns ErrNilConfig.

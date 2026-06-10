@@ -36,7 +36,7 @@ func TestContainsPathTraversal_URLEncoded(t *testing.T) {
 
 func TestHandleBSVAlias_IgnoresMaliciousHost(t *testing.T) {
 	d, _, _, _ := newTestDaemon(t)
-	// Default config has ListenAddr=":8080", TLS.Enabled=false
+	// Default config has ListenAddr="127.0.0.1:8080", TLS.Enabled=false
 
 	req := httptest.NewRequest(http.MethodGet, "/.well-known/bsvalias", nil)
 	req.Host = "evil.example.com"

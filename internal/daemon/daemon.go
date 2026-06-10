@@ -110,61 +110,56 @@ type ChildInfo struct {
 }
 
 // Config holds daemon configuration.
+// Configuration is populated programmatically (CLI flags / engine); there is
+// no config-file parser for this struct.
 type Config struct {
-	ListenAddr string         `toml:"listen"`
-	TLS        TLSConfig      `toml:"tls"`
-	Payment    PaymentConfig  `toml:"payment"`
-	Security   SecurityConfig `toml:"security"`
-	Storage    StorageConfig  `toml:"storage"`
-	Log        LogConfig      `toml:"log"`
-	Mainnet    bool           `toml:"mainnet"` // true = mainnet addresses, false = testnet/regtest
+	ListenAddr string
+	TLS        TLSConfig
+	Payment    PaymentConfig
+	Security   SecurityConfig
+	Storage    StorageConfig
+	Mainnet    bool // true = mainnet addresses, false = testnet/regtest
 }
 
 // TLSConfig holds TLS configuration.
 type TLSConfig struct {
-	Enabled  bool   `toml:"enabled"`
-	CertFile string `toml:"cert"`
-	KeyFile  string `toml:"key"`
+	Enabled  bool
+	CertFile string
+	KeyFile  string
 }
 
 // PaymentConfig holds payment configuration.
 type PaymentConfig struct {
-	Enabled       bool  `toml:"enabled"`
-	InvoiceExpiry int64 `toml:"invoice_expiry"`
+	Enabled       bool
+	InvoiceExpiry int64
 }
 
 // SecurityConfig holds security configuration.
 type SecurityConfig struct {
-	RateLimit      RateLimitConfig `toml:"rate_limit"`
-	CORS           CORSConfig      `toml:"cors"`
-	MaxRequestSize string          `toml:"max_request_size"`
-	TrustProxy     bool            `toml:"trust_proxy"`
-	AdminToken     string          `toml:"admin_token"` // Bearer token for admin endpoints (dashboard, sales)
+	RateLimit      RateLimitConfig
+	CORS           CORSConfig
+	MaxRequestSize string
+	TrustProxy     bool
+	AdminToken     string // Bearer token for admin endpoints (dashboard, sales)
 }
 
 // RateLimitConfig holds rate limiting configuration.
 type RateLimitConfig struct {
-	RPM   int `toml:"rpm"`
-	Burst int `toml:"burst"`
+	RPM   int
+	Burst int
 }
 
 // CORSConfig holds CORS configuration.
 type CORSConfig struct {
-	Origins []string `toml:"origins"`
-	Methods []string `toml:"methods"`
+	Origins []string
+	Methods []string
 }
 
 // StorageConfig holds storage configuration.
 type StorageConfig struct {
-	DataDir   string `toml:"data_dir"`
-	DBPath    string `toml:"db_path"`
-	CacheSize string `toml:"cache_size"`
-}
-
-// LogConfig holds logging configuration.
-type LogConfig struct {
-	Level string `toml:"level"`
-	File  string `toml:"file"`
+	DataDir   string
+	DBPath    string
+	CacheSize string
 }
 
 // Session represents an authenticated Method 42 session.
@@ -208,9 +203,6 @@ func DefaultConfig() *Config {
 			DataDir:   "./data",
 			DBPath:    "./data/bitfs.db",
 			CacheSize: "256MB",
-		},
-		Log: LogConfig{
-			Level: "info",
 		},
 	}
 }
@@ -438,7 +430,16 @@ func (d *Daemon) CreateSession(buyerPub, sellerPub []byte, sharedX, nonceB, nonc
 	h.Write(nonceS)
 	sessionKey := h.Sum(nil)
 
-	sessionID := hex.EncodeToString(sessionKey[:16])
+	// Domain separation: the session ID is an independent random opaque
+	// identifier. It must NOT be derived from the session key — exposing
+	// key bits in a plaintext identifier weakens the key.
+	idBytes := make([]byte, 16)
+	if _, err := randRead(idBytes); err != nil {
+		// crypto/rand never fails on supported platforms; treat failure as fatal
+		// rather than fall back to a predictable or key-derived identifier.
+		panic(fmt.Sprintf("daemon: session ID generation failed: %v", err))
+	}
+	sessionID := hex.EncodeToString(idBytes)
 	now := time.Now()
 
 	session := &Session{

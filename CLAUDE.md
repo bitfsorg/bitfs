@@ -45,12 +45,12 @@ bitfs/                                  ← THIS DIRECTORY (code implementation)
 │   ├── buy/                             Purchase state machine
 │   ├── client/                          b-tools HTTP client
 │   ├── daemon/                          Daemon HTTP server (LFCP, WebMCP, content negotiation)
-│   ├── engine/                          Unified business logic layer
+│   ├── engine/                          Thin alias of libbitfs-go/engine (unified business logic lives in libbitfs-go/vault)
 │   └── publish/                         Content publishing logic
 ├── docs/                              ← Documentation
 │   ├── spec/                            Module specifications (01-method42 to 13-network, TASKS.md)
 │   └── plans/                           Design & implementation plans
-├── integration/                       ← Integration test suites (276 cases)
+├── integration/                       ← Integration test suites (307 cases)
 ├── e2e/                               ← Docker regtest end-to-end tests
 └── dashboard/                         ← React SPA (embedded in daemon)
 ```
@@ -65,7 +65,7 @@ Design docs are in the parent directory. For this project, read:
 | `../design/bitfs/1-ConceptDesign.zh.md` | Vision, core concepts, 86 design decisions |
 | `../design/bitfs/2-SystemDesign.zh.md` | 23 sections: modules, interfaces, data flow |
 | `../design/bitfs/3-DetailedDesign.zh.md` | Algorithms, data structures, protocols |
-| `../design/bitfs/4-TestDesign.zh.md` | ~1022 test cases across 32 categories |
+| `../design/bitfs/4-TestDesign.zh.md` | ~2700+ test cases across 32 categories |
 
 Design docs are in Chinese. Code, specs, and comments are in English.
 

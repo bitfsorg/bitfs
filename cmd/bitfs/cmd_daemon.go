@@ -49,7 +49,7 @@ func runDaemon(args []string) int {
 // runDaemonStart handles "bitfs daemon start".
 func runDaemonStart(args []string) int {
 	fs := flag.NewFlagSet("daemon start", flag.ContinueOnError)
-	listen := fs.String("listen", ":8080", "listen address")
+	listen := fs.String("listen", "127.0.0.1:8080", "listen address")
 	dataDir := fs.String("datadir", config.DefaultDataDir(), "data directory")
 	password := fs.String("password", "", "wallet password (for testing)")
 	rpcURL := fs.String("rpc-url", "", "BSV node JSON-RPC URL")
